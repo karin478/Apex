@@ -29,6 +29,8 @@ func init() {
 	rootCmd.AddCommand(planCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(doctorCmd)
+	rootCmd.AddCommand(killSwitchCmd)
+	rootCmd.AddCommand(resumeCmd)
 }
 
 func main() {
