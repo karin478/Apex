@@ -83,16 +83,24 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Plan: %d steps\n", len(d.Nodes))
 
-	// Build context for each DAG node
+	// Build enriched prompts for each DAG node (keep original Task for display/audit)
 	ctxBuilder := apexctx.NewBuilder(apexctx.Options{
 		TokenBudget: cfg.Context.TokenBudget,
 	})
 
+	enrichedTasks := make(map[string]string)
 	for _, node := range d.Nodes {
 		enriched, buildErr := ctxBuilder.Build(context.Background(), node.Task)
 		if buildErr == nil {
-			node.Task = enriched
+			enrichedTasks[node.ID] = enriched
 		}
+	}
+
+	// Swap in enriched prompts for execution, then restore originals
+	origTasks := make(map[string]string)
+	for id, enriched := range enrichedTasks {
+		origTasks[id] = d.Nodes[id].Task
+		d.Nodes[id].Task = enriched
 	}
 
 	// Execute DAG
@@ -109,6 +117,11 @@ func runTask(cmd *cobra.Command, args []string) error {
 	start := time.Now()
 	execErr := p.Execute(context.Background(), d)
 	duration := time.Since(start)
+
+	// Restore original task names for display/audit
+	for id, orig := range origTasks {
+		d.Nodes[id].Task = orig
+	}
 
 	// Audit
 	auditDir := filepath.Join(cfg.BaseDir, "audit")
