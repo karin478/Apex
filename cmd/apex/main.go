@@ -27,6 +27,8 @@ func init() {
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(memoryCmd)
 	rootCmd.AddCommand(planCmd)
+	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(doctorCmd)
 }
 
 func main() {
