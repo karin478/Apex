@@ -2,6 +2,7 @@ package audit
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,4 +102,77 @@ func TestRecentEntries(t *testing.T) {
 	entries, err := logger.Recent(3)
 	require.NoError(t, err)
 	assert.Len(t, entries, 3)
+}
+
+func TestHashChain(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	for i := 0; i < 3; i++ {
+		logger.Log(Entry{Task: fmt.Sprintf("task-%d", i), RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	}
+
+	today := time.Now().Format("2006-01-02")
+	logFile := filepath.Join(dir, today+".jsonl")
+	data, _ := os.ReadFile(logFile)
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+
+	var records []Record
+	for _, line := range lines {
+		var r Record
+		json.Unmarshal([]byte(line), &r)
+		records = append(records, r)
+	}
+
+	assert.Empty(t, records[0].PrevHash)
+	assert.NotEmpty(t, records[0].Hash)
+	assert.Equal(t, records[0].Hash, records[1].PrevHash)
+	assert.Equal(t, records[1].Hash, records[2].PrevHash)
+}
+
+func TestVerifyChainValid(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+	for i := 0; i < 5; i++ {
+		logger.Log(Entry{Task: fmt.Sprintf("task-%d", i), RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	}
+	valid, brokenAt, err := logger.Verify()
+	require.NoError(t, err)
+	assert.True(t, valid)
+	assert.Equal(t, -1, brokenAt)
+}
+
+func TestVerifyChainBroken(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+	for i := 0; i < 3; i++ {
+		logger.Log(Entry{Task: fmt.Sprintf("task-%d", i), RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	}
+	today := time.Now().Format("2006-01-02")
+	logFile := filepath.Join(dir, today+".jsonl")
+	data, _ := os.ReadFile(logFile)
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	var r Record
+	json.Unmarshal([]byte(lines[1]), &r)
+	r.Task = "TAMPERED"
+	tampered, _ := json.Marshal(r)
+	lines[1] = string(tampered)
+	os.WriteFile(logFile, []byte(strings.Join(lines, "\n")+"\n"), 0644)
+	logger2, _ := NewLogger(dir)
+	valid, brokenAt, err := logger2.Verify()
+	require.NoError(t, err)
+	assert.False(t, valid)
+	assert.Equal(t, 1, brokenAt)
+}
+
+func TestHashChainPersistence(t *testing.T) {
+	dir := t.TempDir()
+	logger1, _ := NewLogger(dir)
+	logger1.Log(Entry{Task: "task-1", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	logger2, _ := NewLogger(dir)
+	logger2.Log(Entry{Task: "task-2", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	valid, _, err := logger2.Verify()
+	require.NoError(t, err)
+	assert.True(t, valid)
 }

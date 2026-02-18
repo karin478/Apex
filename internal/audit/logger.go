@@ -1,6 +1,8 @@
 package audit
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -29,17 +31,51 @@ type Record struct {
 	DurationMs int64  `json:"duration_ms"`
 	Model      string `json:"model"`
 	Error      string `json:"error,omitempty"`
+	PrevHash   string `json:"prev_hash,omitempty"`
+	Hash       string `json:"hash,omitempty"`
 }
 
 type Logger struct {
-	dir string
+	dir      string
+	lastHash string
 }
 
 func NewLogger(dir string) (*Logger, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-	return &Logger{dir: dir}, nil
+	l := &Logger{dir: dir}
+	l.initLastHash()
+	return l, nil
+}
+
+func (l *Logger) initLastHash() {
+	filename := time.Now().Format("2006-01-02") + ".jsonl"
+	path := filepath.Join(l.dir, filename)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	content := strings.TrimSpace(string(data))
+	if content == "" {
+		return
+	}
+	lines := strings.Split(content, "\n")
+	lastLine := lines[len(lines)-1]
+	var r Record
+	if err := json.Unmarshal([]byte(lastLine), &r); err != nil {
+		return
+	}
+	l.lastHash = r.Hash
+}
+
+func computeHash(r Record) string {
+	saved := r.Hash
+	r.Hash = ""
+	data, _ := json.Marshal(r)
+	r.Hash = saved
+	h := sha256.Sum256(data)
+	return hex.EncodeToString(h[:])
 }
 
 func (l *Logger) Log(entry Entry) error {
@@ -52,7 +88,10 @@ func (l *Logger) Log(entry Entry) error {
 		DurationMs: entry.Duration.Milliseconds(),
 		Model:      entry.Model,
 		Error:      entry.Error,
+		PrevHash:   l.lastHash,
 	}
+	record.Hash = computeHash(record)
+	l.lastHash = record.Hash
 
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -102,4 +141,51 @@ func (l *Logger) Recent(n int) ([]Record, error) {
 		}
 	}
 	return records, nil
+}
+
+func (l *Logger) Verify() (bool, int, error) {
+	files, err := filepath.Glob(filepath.Join(l.dir, "*.jsonl"))
+	if err != nil {
+		return false, -1, err
+	}
+	sort.Strings(files) // ascending date order
+
+	var expectedPrevHash string
+	index := 0
+
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return false, -1, err
+		}
+		content := strings.TrimSpace(string(data))
+		if content == "" {
+			continue
+		}
+		lines := strings.Split(content, "\n")
+		for _, line := range lines {
+			var r Record
+			if err := json.Unmarshal([]byte(line), &r); err != nil {
+				return false, -1, err
+			}
+			// Old records without hash: skip verification, treat as chain head
+			if r.Hash == "" {
+				expectedPrevHash = ""
+				index++
+				continue
+			}
+			// Verify hash integrity
+			if computeHash(r) != r.Hash {
+				return false, index, nil
+			}
+			// Verify chain linkage
+			if r.PrevHash != expectedPrevHash {
+				return false, index, nil
+			}
+			expectedPrevHash = r.Hash
+			index++
+		}
+	}
+
+	return true, -1, nil
 }
