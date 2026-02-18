@@ -112,6 +112,23 @@ func TestLoadConfigPhase3Override(t *testing.T) {
 	assert.Equal(t, 3072, cfg.Embedding.Dimensions)
 }
 
+func TestDefaultConfigPhase4(t *testing.T) {
+	cfg := Default()
+	assert.Equal(t, 60000, cfg.Context.TokenBudget)
+}
+
+func TestLoadConfigPhase4Override(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	content := []byte(`context:
+  token_budget: 30000
+`)
+	require.NoError(t, os.WriteFile(configPath, content, 0644))
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, 30000, cfg.Context.TokenBudget)
+}
+
 func TestEnsureDirs(t *testing.T) {
 	dir := t.TempDir()
 	cfg := Default()

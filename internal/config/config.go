@@ -35,12 +35,17 @@ type EmbeddingConfig struct {
 	Dimensions int    `yaml:"dimensions"`
 }
 
+type ContextConfig struct {
+	TokenBudget int `yaml:"token_budget"`
+}
+
 type Config struct {
 	Claude     ClaudeConfig     `yaml:"claude"`
 	Governance GovernanceConfig `yaml:"governance"`
 	Planner    PlannerConfig    `yaml:"planner"`
 	Pool       PoolConfig       `yaml:"pool"`
 	Embedding  EmbeddingConfig  `yaml:"embedding"`
+	Context    ContextConfig    `yaml:"context"`
 	BaseDir    string           `yaml:"-"`
 }
 
@@ -69,6 +74,9 @@ func Default() *Config {
 			Model:      "text-embedding-3-small",
 			APIKeyEnv:  "OPENAI_API_KEY",
 			Dimensions: 1536,
+		},
+		Context: ContextConfig{
+			TokenBudget: 60000,
 		},
 		BaseDir: filepath.Join(home, ".apex"),
 	}
@@ -119,6 +127,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Embedding.Dimensions == 0 {
 		cfg.Embedding.Dimensions = 1536
+	}
+	if cfg.Context.TokenBudget == 0 {
+		cfg.Context.TokenBudget = 60000
 	}
 	if cfg.BaseDir == "" {
 		home, _ := os.UserHomeDir()
