@@ -176,3 +176,33 @@ func TestHashChainPersistence(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, valid)
 }
+
+func TestHashChainAcrossDays(t *testing.T) {
+	dir := t.TempDir()
+
+	// Simulate a record written on a previous day
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	prevRecord := Record{
+		Timestamp:  time.Now().AddDate(0, 0, -1).UTC().Format(time.RFC3339),
+		ActionID:   "prev-day-id",
+		Task:       "yesterday-task",
+		RiskLevel:  "LOW",
+		Outcome:    "success",
+		DurationMs: 1000,
+		Model:      "test",
+	}
+	prevRecord.Hash = computeHash(prevRecord)
+	data, _ := json.Marshal(prevRecord)
+	data = append(data, '\n')
+	os.WriteFile(filepath.Join(dir, yesterday+".jsonl"), data, 0644)
+
+	// New logger should pick up the last hash from yesterday's file
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+	logger.Log(Entry{Task: "today-task", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+
+	// Verify chain integrity across day boundary
+	valid, brokenAt, err := logger.Verify()
+	require.NoError(t, err)
+	assert.True(t, valid, "chain should be valid across day boundaries, broken at %d", brokenAt)
+}

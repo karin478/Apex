@@ -22,6 +22,9 @@ func init() {
 }
 
 func showStatus(cmd *cobra.Command, args []string) error {
+	if statusLast < 1 {
+		return fmt.Errorf("--last must be at least 1, got %d", statusLast)
+	}
 	home, _ := os.UserHomeDir()
 	runsDir := filepath.Join(home, ".apex", "runs")
 	store := manifest.NewStore(runsDir)

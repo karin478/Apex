@@ -50,8 +50,13 @@ func NewLogger(dir string) (*Logger, error) {
 }
 
 func (l *Logger) initLastHash() {
-	filename := time.Now().Format("2006-01-02") + ".jsonl"
-	path := filepath.Join(l.dir, filename)
+	files, err := filepath.Glob(filepath.Join(l.dir, "*.jsonl"))
+	if err != nil || len(files) == 0 {
+		return
+	}
+	sort.Strings(files) // ascending date order
+	// Read from the newest file
+	path := files[len(files)-1]
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return
@@ -91,7 +96,6 @@ func (l *Logger) Log(entry Entry) error {
 		PrevHash:   l.lastHash,
 	}
 	record.Hash = computeHash(record)
-	l.lastHash = record.Hash
 
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -108,8 +112,11 @@ func (l *Logger) Log(entry Entry) error {
 	}
 	defer f.Close()
 
-	_, err = f.Write(data)
-	return err
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+	l.lastHash = record.Hash
+	return nil
 }
 
 func (l *Logger) Recent(n int) ([]Record, error) {
