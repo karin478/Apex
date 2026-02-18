@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/lyndonlyu/apex/internal/config"
 	apexctx "github.com/lyndonlyu/apex/internal/context"
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
 	"github.com/lyndonlyu/apex/internal/governance"
+	"github.com/lyndonlyu/apex/internal/manifest"
 	"github.com/lyndonlyu/apex/internal/memory"
 	"github.com/lyndonlyu/apex/internal/planner"
 	"github.com/lyndonlyu/apex/internal/pool"
@@ -148,6 +150,49 @@ func runTask(cmd *cobra.Command, args []string) error {
 				Error:     nodeErr,
 			})
 		}
+	}
+
+	// Save run manifest
+	runsDir := filepath.Join(cfg.BaseDir, "runs")
+	manifestStore := manifest.NewStore(runsDir)
+
+	outcome := "success"
+	if d.HasFailure() {
+		if execErr != nil {
+			outcome = "failure"
+		} else {
+			outcome = "partial_failure"
+		}
+	}
+
+	var nodeResults []manifest.NodeResult
+	for _, n := range d.Nodes {
+		nr := manifest.NodeResult{
+			ID:     n.ID,
+			Task:   n.Task,
+			Status: n.Status.String(),
+		}
+		if n.Status == dag.Failed {
+			nr.Error = n.Error
+		}
+		nodeResults = append(nodeResults, nr)
+	}
+
+	runManifest := &manifest.Manifest{
+		RunID:      uuid.New().String(),
+		Task:       task,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+		Model:      cfg.Claude.Model,
+		Effort:     cfg.Claude.Effort,
+		RiskLevel:  risk.String(),
+		NodeCount:  len(d.Nodes),
+		DurationMs: duration.Milliseconds(),
+		Outcome:    outcome,
+		Nodes:      nodeResults,
+	}
+
+	if saveErr := manifestStore.Save(runManifest); saveErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: manifest save failed: %v\n", saveErr)
 	}
 
 	// Print results
