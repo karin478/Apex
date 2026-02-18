@@ -132,10 +132,6 @@ func runTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("execution error: %w", execErr)
 	}
 
-	if d.HasFailure() {
-		fmt.Println("\nSome steps failed. Check audit log for details.")
-	}
-
 	// Save to memory
 	memDir := filepath.Join(cfg.BaseDir, "memory")
 	store, memErr := memory.NewStore(memDir)
@@ -146,5 +142,9 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("\nDone (%.1fs, %s risk, %d steps)\n", duration.Seconds(), risk, len(d.Nodes))
+
+	if d.HasFailure() {
+		return fmt.Errorf("some steps failed, check audit log for details")
+	}
 	return nil
 }
