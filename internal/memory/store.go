@@ -126,7 +126,7 @@ func (s *Store) Search(keyword string) ([]SearchResult, error) {
 			}
 
 			results = append(results, SearchResult{
-				Path:    path,
+				Path:    rel,
 				Type:    memType,
 				Snippet: snippet,
 			})
