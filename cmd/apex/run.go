@@ -14,6 +14,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
 	"github.com/lyndonlyu/apex/internal/governance"
+	"github.com/lyndonlyu/apex/internal/killswitch"
 	"github.com/lyndonlyu/apex/internal/manifest"
 	"github.com/lyndonlyu/apex/internal/memory"
 	"github.com/lyndonlyu/apex/internal/planner"
@@ -43,6 +44,12 @@ func runTask(cmd *cobra.Command, args []string) error {
 	// Ensure directories
 	if err := cfg.EnsureDirs(); err != nil {
 		return fmt.Errorf("failed to create dirs: %w", err)
+	}
+
+	// Kill switch pre-flight check
+	ks := killswitch.New(killSwitchPath())
+	if ks.IsActive() {
+		return fmt.Errorf("kill switch is active at %s — use 'apex resume' to deactivate", ks.Path())
 	}
 
 	// Classify risk
@@ -115,14 +122,24 @@ func runTask(cmd *cobra.Command, args []string) error {
 	runner := pool.NewClaudeRunner(exec)
 	p := pool.New(cfg.Pool.MaxConcurrent, runner)
 
+	killCtx, killCancel := ks.Watch(context.Background())
+	defer killCancel()
+
 	fmt.Println("Executing...")
 	start := time.Now()
-	execErr := p.Execute(context.Background(), d)
+	execErr := p.Execute(killCtx, d)
 	duration := time.Since(start)
+
+	// Detect kill switch interruption
+	killedBySwitch := ks.IsActive() && killCtx.Err() != nil
 
 	// Restore original task names for display/audit
 	for id, orig := range origTasks {
 		d.Nodes[id].Task = orig
+	}
+
+	if killedBySwitch {
+		fmt.Println("\n[KILL SWITCH] Execution halted by kill switch.")
 	}
 
 	// Audit
@@ -157,7 +174,9 @@ func runTask(cmd *cobra.Command, args []string) error {
 	manifestStore := manifest.NewStore(runsDir)
 
 	outcome := "success"
-	if d.HasFailure() {
+	if killedBySwitch {
+		outcome = "killed"
+	} else if d.HasFailure() {
 		if execErr != nil {
 			outcome = "failure"
 		} else {
