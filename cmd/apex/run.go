@@ -9,6 +9,7 @@ import (
 
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/lyndonlyu/apex/internal/config"
+	apexctx "github.com/lyndonlyu/apex/internal/context"
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
 	"github.com/lyndonlyu/apex/internal/governance"
@@ -81,6 +82,18 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Plan: %d steps\n", len(d.Nodes))
+
+	// Build context for each DAG node
+	ctxBuilder := apexctx.NewBuilder(apexctx.Options{
+		TokenBudget: cfg.Context.TokenBudget,
+	})
+
+	for _, node := range d.Nodes {
+		enriched, buildErr := ctxBuilder.Build(context.Background(), node.Task)
+		if buildErr == nil {
+			node.Task = enriched
+		}
+	}
 
 	// Execute DAG
 	exec := executor.New(executor.Options{
