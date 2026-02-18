@@ -23,6 +23,9 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(historyCmd)
+	rootCmd.AddCommand(memoryCmd)
 }
 
 func main() {
