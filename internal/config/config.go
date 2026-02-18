@@ -20,9 +20,20 @@ type GovernanceConfig struct {
 	Reject      []string `yaml:"reject"`
 }
 
+type PlannerConfig struct {
+	Model   string `yaml:"model"`
+	Timeout int    `yaml:"timeout"`
+}
+
+type PoolConfig struct {
+	MaxConcurrent int `yaml:"max_concurrent"`
+}
+
 type Config struct {
 	Claude     ClaudeConfig     `yaml:"claude"`
 	Governance GovernanceConfig `yaml:"governance"`
+	Planner    PlannerConfig    `yaml:"planner"`
+	Pool       PoolConfig       `yaml:"pool"`
 	BaseDir    string           `yaml:"-"`
 }
 
@@ -32,13 +43,20 @@ func Default() *Config {
 		Claude: ClaudeConfig{
 			Model:           "claude-opus-4-6",
 			Effort:          "high",
-			Timeout:         600,
-			LongTaskTimeout: 1800,
+			Timeout:         1800,
+			LongTaskTimeout: 7200,
 		},
 		Governance: GovernanceConfig{
 			AutoApprove: []string{"LOW"},
 			Confirm:     []string{"MEDIUM"},
 			Reject:      []string{"HIGH", "CRITICAL"},
+		},
+		Planner: PlannerConfig{
+			Model:   "claude-opus-4-6",
+			Timeout: 120,
+		},
+		Pool: PoolConfig{
+			MaxConcurrent: 4,
 		},
 		BaseDir: filepath.Join(home, ".apex"),
 	}
@@ -67,10 +85,19 @@ func Load(path string) (*Config, error) {
 		cfg.Claude.Effort = "high"
 	}
 	if cfg.Claude.Timeout == 0 {
-		cfg.Claude.Timeout = 600
+		cfg.Claude.Timeout = 1800
 	}
 	if cfg.Claude.LongTaskTimeout == 0 {
-		cfg.Claude.LongTaskTimeout = 1800
+		cfg.Claude.LongTaskTimeout = 7200
+	}
+	if cfg.Planner.Model == "" {
+		cfg.Planner.Model = "claude-opus-4-6"
+	}
+	if cfg.Planner.Timeout == 0 {
+		cfg.Planner.Timeout = 120
+	}
+	if cfg.Pool.MaxConcurrent == 0 {
+		cfg.Pool.MaxConcurrent = 4
 	}
 	if cfg.BaseDir == "" {
 		home, _ := os.UserHomeDir()
