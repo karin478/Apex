@@ -9,16 +9,19 @@ import (
 
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/lyndonlyu/apex/internal/config"
+	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
 	"github.com/lyndonlyu/apex/internal/governance"
 	"github.com/lyndonlyu/apex/internal/memory"
+	"github.com/lyndonlyu/apex/internal/planner"
+	"github.com/lyndonlyu/apex/internal/pool"
 	"github.com/spf13/cobra"
 )
 
 var runCmd = &cobra.Command{
 	Use:   "run [task]",
 	Short: "Execute a task via Claude Code",
-	Long:  "Classify risk, get approval if needed, then execute the task via Claude Code CLI.",
+	Long:  "Classify risk, decompose into DAG, then execute concurrently via Claude Code CLI.",
 	Args:  cobra.MinimumNArgs(1),
 	RunE:  runTask,
 }
@@ -59,53 +62,79 @@ func runTask(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Execute
+	// Plan: decompose task into DAG
+	planExec := executor.New(executor.Options{
+		Model:   cfg.Planner.Model,
+		Effort:  "high",
+		Timeout: time.Duration(cfg.Planner.Timeout) * time.Second,
+	})
+
+	fmt.Println("Planning task...")
+	nodes, err := planner.Plan(context.Background(), planExec, task, cfg.Planner.Model, cfg.Planner.Timeout)
+	if err != nil {
+		return fmt.Errorf("planning failed: %w", err)
+	}
+
+	d, err := dag.New(nodes)
+	if err != nil {
+		return fmt.Errorf("invalid DAG: %w", err)
+	}
+
+	fmt.Printf("Plan: %d steps\n", len(d.Nodes))
+
+	// Execute DAG
 	exec := executor.New(executor.Options{
 		Model:   cfg.Claude.Model,
 		Effort:  cfg.Claude.Effort,
 		Timeout: time.Duration(cfg.Claude.Timeout) * time.Second,
 	})
 
-	fmt.Println("Executing task...")
+	runner := pool.NewClaudeRunner(exec)
+	p := pool.New(cfg.Pool.MaxConcurrent, runner)
+
+	fmt.Println("Executing...")
 	start := time.Now()
-	result, err := exec.Run(context.Background(), task)
+	execErr := p.Execute(context.Background(), d)
 	duration := time.Since(start)
 
 	// Audit
 	auditDir := filepath.Join(cfg.BaseDir, "audit")
-	logger, auditErr := audit.NewLogger(auditDir)
-	if auditErr != nil {
-		fmt.Fprintf(os.Stderr, "warning: audit init failed: %v\n", auditErr)
+	logger, auditInitErr := audit.NewLogger(auditDir)
+	if auditInitErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: audit init failed: %v\n", auditInitErr)
 	}
 
-	outcome := "success"
-	errMsg := ""
-	if err != nil {
-		outcome = "failure"
-		errMsg = err.Error()
-		if result.TimedOut {
-			outcome = "timeout"
+	// Log each node
+	if logger != nil {
+		for _, n := range d.Nodes {
+			nodeOutcome := "success"
+			nodeErr := ""
+			if n.Status == dag.Failed {
+				nodeOutcome = "failure"
+				nodeErr = n.Error
+			}
+			logger.Log(audit.Entry{
+				Task:      fmt.Sprintf("[%s] %s", n.ID, n.Task),
+				RiskLevel: risk.String(),
+				Outcome:   nodeOutcome,
+				Duration:  duration,
+				Model:     cfg.Claude.Model,
+				Error:     nodeErr,
+			})
 		}
 	}
 
-	if logger != nil {
-		logger.Log(audit.Entry{
-			Task:      task,
-			RiskLevel: risk.String(),
-			Outcome:   outcome,
-			Duration:  duration,
-			Model:     cfg.Claude.Model,
-			Error:     errMsg,
-		})
+	// Print results
+	fmt.Println("\n--- Results ---")
+	fmt.Println(d.Summary())
+
+	if execErr != nil {
+		return fmt.Errorf("execution error: %w", execErr)
 	}
 
-	if err != nil {
-		return fmt.Errorf("execution failed: %w", err)
+	if d.HasFailure() {
+		fmt.Println("\nSome steps failed. Check audit log for details.")
 	}
-
-	// Output result
-	fmt.Println("\n--- Result ---")
-	fmt.Println(result.Output)
 
 	// Save to memory
 	memDir := filepath.Join(cfg.BaseDir, "memory")
@@ -113,9 +142,9 @@ func runTask(cmd *cobra.Command, args []string) error {
 	if memErr != nil {
 		fmt.Fprintf(os.Stderr, "warning: memory init failed: %v\n", memErr)
 	} else {
-		store.SaveSession("run", task, result.Output)
+		store.SaveSession("run", task, d.Summary())
 	}
 
-	fmt.Printf("\nDone (%.1fs, %s risk)\n", duration.Seconds(), risk)
+	fmt.Printf("\nDone (%.1fs, %s risk, %d steps)\n", duration.Seconds(), risk, len(d.Nodes))
 	return nil
 }
