@@ -89,6 +89,29 @@ pool:
 	assert.Equal(t, 2, cfg.Pool.MaxConcurrent)
 }
 
+func TestDefaultConfigPhase3(t *testing.T) {
+	cfg := Default()
+	assert.Equal(t, "text-embedding-3-small", cfg.Embedding.Model)
+	assert.Equal(t, "OPENAI_API_KEY", cfg.Embedding.APIKeyEnv)
+	assert.Equal(t, 1536, cfg.Embedding.Dimensions)
+}
+
+func TestLoadConfigPhase3Override(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	content := []byte(`embedding:
+  model: text-embedding-3-large
+  api_key_env: MY_OPENAI_KEY
+  dimensions: 3072
+`)
+	require.NoError(t, os.WriteFile(configPath, content, 0644))
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, "text-embedding-3-large", cfg.Embedding.Model)
+	assert.Equal(t, "MY_OPENAI_KEY", cfg.Embedding.APIKeyEnv)
+	assert.Equal(t, 3072, cfg.Embedding.Dimensions)
+}
+
 func TestEnsureDirs(t *testing.T) {
 	dir := t.TempDir()
 	cfg := Default()

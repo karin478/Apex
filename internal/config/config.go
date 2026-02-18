@@ -29,11 +29,18 @@ type PoolConfig struct {
 	MaxConcurrent int `yaml:"max_concurrent"`
 }
 
+type EmbeddingConfig struct {
+	Model      string `yaml:"model"`
+	APIKeyEnv  string `yaml:"api_key_env"`
+	Dimensions int    `yaml:"dimensions"`
+}
+
 type Config struct {
 	Claude     ClaudeConfig     `yaml:"claude"`
 	Governance GovernanceConfig `yaml:"governance"`
 	Planner    PlannerConfig    `yaml:"planner"`
 	Pool       PoolConfig       `yaml:"pool"`
+	Embedding  EmbeddingConfig  `yaml:"embedding"`
 	BaseDir    string           `yaml:"-"`
 }
 
@@ -57,6 +64,11 @@ func Default() *Config {
 		},
 		Pool: PoolConfig{
 			MaxConcurrent: 4,
+		},
+		Embedding: EmbeddingConfig{
+			Model:      "text-embedding-3-small",
+			APIKeyEnv:  "OPENAI_API_KEY",
+			Dimensions: 1536,
 		},
 		BaseDir: filepath.Join(home, ".apex"),
 	}
@@ -98,6 +110,15 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Pool.MaxConcurrent == 0 {
 		cfg.Pool.MaxConcurrent = 4
+	}
+	if cfg.Embedding.Model == "" {
+		cfg.Embedding.Model = "text-embedding-3-small"
+	}
+	if cfg.Embedding.APIKeyEnv == "" {
+		cfg.Embedding.APIKeyEnv = "OPENAI_API_KEY"
+	}
+	if cfg.Embedding.Dimensions == 0 {
+		cfg.Embedding.Dimensions = 1536
 	}
 	if cfg.BaseDir == "" {
 		home, _ := os.UserHomeDir()
