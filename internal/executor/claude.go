@@ -68,12 +68,11 @@ func (e *Executor) Run(ctx context.Context, task string) (Result, error) {
 		Duration: duration,
 	}
 
-	if ctx.Err() == context.DeadlineExceeded {
-		result.TimedOut = true
-		return result, ctx.Err()
-	}
-
 	if err != nil {
+		if ctx.Err() != nil {
+			result.TimedOut = true
+			return result, ctx.Err()
+		}
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}

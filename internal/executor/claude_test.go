@@ -2,6 +2,8 @@ package executor
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -63,14 +65,19 @@ func TestExecuteWithMockBinary(t *testing.T) {
 }
 
 func TestExecuteTimeout(t *testing.T) {
+	// Create a script that ignores all args and sleeps,
+	// since buildArgs prepends claude-specific flags
+	script := filepath.Join(t.TempDir(), "slow.sh")
+	os.WriteFile(script, []byte("#!/bin/sh\nsleep 30\n"), 0755)
+
 	exec := New(Options{
 		Model:   "claude-opus-4-6",
 		Effort:  "high",
-		Timeout: 100 * time.Millisecond,
-		Binary:  "sleep",
+		Timeout: 500 * time.Millisecond,
+		Binary:  script,
 	})
 
-	result, err := exec.Run(context.Background(), "10")
+	result, err := exec.Run(context.Background(), "ignored")
 	assert.Error(t, err)
 	assert.True(t, result.TimedOut)
 }
