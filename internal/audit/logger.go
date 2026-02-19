@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,17 +25,17 @@ type Entry struct {
 }
 
 type Record struct {
-	Timestamp  string `json:"timestamp"`
-	ActionID   string `json:"action_id"`
-	Task       string `json:"task"`
-	RiskLevel  string `json:"risk_level"`
-	Outcome    string `json:"outcome"`
-	DurationMs int64  `json:"duration_ms"`
-	Model      string `json:"model"`
+	Timestamp    string `json:"timestamp"`
+	ActionID     string `json:"action_id"`
+	Task         string `json:"task"`
+	RiskLevel    string `json:"risk_level"`
+	Outcome      string `json:"outcome"`
+	DurationMs   int64  `json:"duration_ms"`
+	Model        string `json:"model"`
 	Error        string `json:"error,omitempty"`
 	SandboxLevel string `json:"sandbox_level,omitempty"`
 	PrevHash     string `json:"prev_hash,omitempty"`
-	Hash       string `json:"hash,omitempty"`
+	Hash         string `json:"hash,omitempty"`
 }
 
 type Logger struct {
@@ -198,4 +199,44 @@ func (l *Logger) Verify() (bool, int, error) {
 	}
 
 	return true, -1, nil
+}
+
+func (l *Logger) RecordsForDate(date string) ([]Record, error) {
+	path := filepath.Join(l.dir, date+".jsonl")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	content := strings.TrimSpace(string(data))
+	if content == "" {
+		return nil, nil
+	}
+	lines := strings.Split(content, "\n")
+	var records []Record
+	for _, line := range lines {
+		var r Record
+		if err := json.Unmarshal([]byte(line), &r); err != nil {
+			return nil, fmt.Errorf("parse audit record: %w", err)
+		}
+		records = append(records, r)
+	}
+	return records, nil
+}
+
+func (l *Logger) LastHashForDate(date string) (string, int, error) {
+	records, err := l.RecordsForDate(date)
+	if err != nil {
+		return "", 0, err
+	}
+	if len(records) == 0 {
+		return "", 0, nil
+	}
+	return records[len(records)-1].Hash, len(records), nil
+}
+
+func (l *Logger) Dir() string {
+	return l.dir
 }

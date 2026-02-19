@@ -227,3 +227,45 @@ func TestHashChainAcrossDays(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, valid, "chain should be valid across day boundaries, broken at %d", brokenAt)
 }
+
+func TestRecordsForDate(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+
+	for i := 0; i < 3; i++ {
+		logger.Log(Entry{Task: fmt.Sprintf("task-%d", i), RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	}
+
+	today := time.Now().Format("2006-01-02")
+	records, err := logger.RecordsForDate(today)
+	require.NoError(t, err)
+	assert.Len(t, records, 3)
+	assert.Equal(t, "task-0", records[0].Task)
+	assert.Equal(t, "task-2", records[2].Task)
+
+	records, err = logger.RecordsForDate("1999-01-01")
+	require.NoError(t, err)
+	assert.Empty(t, records)
+}
+
+func TestLastHashForDate(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+
+	logger.Log(Entry{Task: "task-0", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	logger.Log(Entry{Task: "task-1", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+
+	today := time.Now().Format("2006-01-02")
+	hash, count, err := logger.LastHashForDate(today)
+	require.NoError(t, err)
+	assert.NotEmpty(t, hash)
+	assert.Equal(t, 2, count)
+
+	records, _ := logger.RecordsForDate(today)
+	assert.Equal(t, records[1].Hash, hash)
+
+	hash, count, err = logger.LastHashForDate("1999-01-01")
+	require.NoError(t, err)
+	assert.Empty(t, hash)
+	assert.Equal(t, 0, count)
+}
