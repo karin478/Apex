@@ -2,6 +2,7 @@ package dag
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -233,4 +234,60 @@ func (d *DAG) Summary() string {
 		lines = append(lines, line)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// NodeSlice returns nodes in topological order (dependencies before dependents).
+// Thread-safe.
+func (d *DAG) NodeSlice() []*Node {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	visited := make(map[string]bool, len(d.Nodes))
+	var order []*Node
+
+	var visit func(id string)
+	visit = func(id string) {
+		if visited[id] {
+			return
+		}
+		visited[id] = true
+		n := d.Nodes[id]
+		for _, dep := range n.Depends {
+			visit(dep)
+		}
+		order = append(order, n)
+	}
+
+	// Sort keys for deterministic output
+	ids := make([]string, 0, len(d.Nodes))
+	for id := range d.Nodes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		visit(id)
+	}
+
+	return order
+}
+
+// RemoveNode removes a node from the DAG and strips it from all dependency lists.
+// Thread-safe. No-op if the node does not exist.
+func (d *DAG) RemoveNode(id string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if _, ok := d.Nodes[id]; !ok {
+		return
+	}
+	delete(d.Nodes, id)
+	for _, n := range d.Nodes {
+		filtered := n.Depends[:0]
+		for _, dep := range n.Depends {
+			if dep != id {
+				filtered = append(filtered, dep)
+			}
+		}
+		n.Depends = filtered
+	}
 }

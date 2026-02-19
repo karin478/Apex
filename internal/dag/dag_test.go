@@ -161,6 +161,52 @@ func TestEmptyDAG(t *testing.T) {
 	assert.Contains(t, err.Error(), "empty")
 }
 
+func TestNodeSlice(t *testing.T) {
+	nodes := []NodeSpec{
+		{ID: "a", Task: "task a", Depends: []string{}},
+		{ID: "b", Task: "task b", Depends: []string{"a"}},
+		{ID: "c", Task: "task c", Depends: []string{"a"}},
+	}
+	d, _ := New(nodes)
+	slice := d.NodeSlice()
+	assert.Len(t, slice, 3)
+	// Verify topological order: a before b, a before c
+	indexMap := make(map[string]int)
+	for i, n := range slice {
+		indexMap[n.ID] = i
+	}
+	assert.Less(t, indexMap["a"], indexMap["b"])
+	assert.Less(t, indexMap["a"], indexMap["c"])
+}
+
+func TestRemoveNode(t *testing.T) {
+	nodes := []NodeSpec{
+		{ID: "a", Task: "task a", Depends: []string{}},
+		{ID: "b", Task: "task b", Depends: []string{"a"}},
+		{ID: "c", Task: "task c", Depends: []string{"b"}},
+		{ID: "d", Task: "task d", Depends: []string{"a"}},
+	}
+	d, _ := New(nodes)
+	d.RemoveNode("b")
+
+	assert.Len(t, d.Nodes, 3)
+	assert.Nil(t, d.Nodes["b"])
+	// c's dependency on b should be removed
+	assert.NotContains(t, d.Nodes["c"].Depends, "b")
+	// a and d are unchanged
+	assert.NotNil(t, d.Nodes["a"])
+	assert.NotNil(t, d.Nodes["d"])
+}
+
+func TestRemoveNodeNonexistent(t *testing.T) {
+	nodes := []NodeSpec{
+		{ID: "a", Task: "task a", Depends: []string{}},
+	}
+	d, _ := New(nodes)
+	d.RemoveNode("nonexistent") // should not panic
+	assert.Len(t, d.Nodes, 1)
+}
+
 func readyIDs(nodes []*Node) []string {
 	ids := make([]string, len(nodes))
 	for i, n := range nodes {
