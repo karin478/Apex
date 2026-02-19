@@ -78,6 +78,8 @@ retry:
   init_delay_seconds: 0
   multiplier: 1.0
   max_delay_seconds: 0
+sandbox:
+  level: "none"
 `, mockBin)
 
 	configPath := filepath.Join(home, ".apex", "config.yaml")

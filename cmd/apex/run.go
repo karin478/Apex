@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/planner"
 	"github.com/lyndonlyu/apex/internal/pool"
 	"github.com/lyndonlyu/apex/internal/retry"
+	"github.com/lyndonlyu/apex/internal/sandbox"
 	"github.com/lyndonlyu/apex/internal/snapshot"
 	"github.com/spf13/cobra"
 )
@@ -82,12 +84,59 @@ func runTask(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Resolve sandbox
+	var sb sandbox.Sandbox
+	if cfg.Sandbox.Level == "auto" {
+		sb = sandbox.Detect()
+	} else {
+		level, parseErr := sandbox.ParseLevel(cfg.Sandbox.Level)
+		if parseErr != nil {
+			return fmt.Errorf("invalid sandbox level: %w", parseErr)
+		}
+		var levelErr error
+		sb, levelErr = sandbox.ForLevel(level)
+		if levelErr != nil {
+			return fmt.Errorf("sandbox unavailable: %w", levelErr)
+		}
+	}
+
+	// Configure sandbox from config
+	switch s := sb.(type) {
+	case *sandbox.DockerSandbox:
+		s.Image = cfg.Sandbox.DockerImage
+		s.MemoryLimit = cfg.Sandbox.MemoryLimit
+		s.CPULimit = cfg.Sandbox.CPULimit
+	case *sandbox.UlimitSandbox:
+		s.MaxCPUSec = cfg.Sandbox.MaxCPUSeconds
+		s.MaxFileSizeMB = cfg.Sandbox.MaxFileSizeMB
+	}
+
+	// Fail-Closed: check if risk level requires higher sandbox
+	for _, req := range cfg.Sandbox.RequireFor {
+		if strings.EqualFold(req, risk.String()) {
+			var requiredLevel sandbox.Level
+			if strings.EqualFold(req, "CRITICAL") || strings.EqualFold(req, "HIGH") {
+				requiredLevel = sandbox.Docker
+			} else {
+				requiredLevel = sandbox.Ulimit
+			}
+			if sb.Level() < requiredLevel {
+				return fmt.Errorf("fail-closed: task risk %s requires %s isolation but only %s available",
+					risk, requiredLevel, sb.Level())
+			}
+			break
+		}
+	}
+
+	fmt.Printf("Sandbox: %s\n", sb.Level())
+
 	// Plan: decompose task into DAG
 	planExec := executor.New(executor.Options{
 		Model:   cfg.Planner.Model,
 		Effort:  "high",
 		Timeout: time.Duration(cfg.Planner.Timeout) * time.Second,
 		Binary:  cfg.Claude.Binary,
+		Sandbox: sb,
 	})
 
 	fmt.Println("Planning task...")
@@ -189,6 +238,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 		Effort:  cfg.Claude.Effort,
 		Timeout: time.Duration(cfg.Claude.Timeout) * time.Second,
 		Binary:  cfg.Claude.Binary,
+		Sandbox: sb,
 	})
 
 	runner := pool.NewClaudeRunner(exec)
