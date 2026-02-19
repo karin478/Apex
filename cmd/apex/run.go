@@ -11,6 +11,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/approval"
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/lyndonlyu/apex/internal/config"
+	"github.com/lyndonlyu/apex/internal/cost"
 	apexctx "github.com/lyndonlyu/apex/internal/context"
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
@@ -23,6 +24,12 @@ import (
 	"github.com/lyndonlyu/apex/internal/snapshot"
 	"github.com/spf13/cobra"
 )
+
+var dryRun bool
+
+func init() {
+	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan and cost estimate without running")
+}
 
 var runCmd = &cobra.Command{
 	Use:   "run [task]",
@@ -129,6 +136,43 @@ func runTask(cmd *cobra.Command, args []string) error {
 		if buildErr == nil {
 			enrichedTasks[node.ID] = enriched
 		}
+	}
+
+	// Dry-run: print report and exit
+	if dryRun {
+		fmt.Println("\n[DRY RUN]")
+		fmt.Printf("Risk: %s", risk)
+		if risk.ShouldRequireApproval() {
+			fmt.Print(" (approval required for execution)")
+		}
+		fmt.Println()
+
+		fmt.Printf("\nPlan: %d steps\n", len(d.Nodes))
+		for i, n := range d.NodeSlice() {
+			nodeRisk := governance.Classify(n.Task)
+			fmt.Fprintf(os.Stdout, "  [%d] %-40s %s\n", i+1, n.Task, nodeRisk)
+		}
+
+		fmt.Println("\nContext:")
+		totalTokens := 0
+		for i, n := range d.NodeSlice() {
+			if enriched, ok := enrichedTasks[n.ID]; ok {
+				tokens := len([]rune(enriched)) / 3
+				if tokens == 0 {
+					tokens = 1
+				}
+				totalTokens += tokens
+				fmt.Fprintf(os.Stdout, "  [%d] %d tokens\n", i+1, tokens)
+			}
+		}
+		fmt.Fprintf(os.Stdout, "  Budget: %d/%d (%d%%)\n", totalTokens, cfg.Context.TokenBudget,
+			totalTokens*100/max(cfg.Context.TokenBudget, 1))
+
+		est := cost.EstimateRun(enrichedTasks, cfg.Claude.Model)
+		fmt.Printf("\nCost estimate: %s (%d calls, %s)\n", cost.FormatCost(est.TotalCost), est.NodeCount, est.Model)
+
+		fmt.Println("\nNo changes made. Run without --dry-run to execute.")
+		return nil
 	}
 
 	// Swap in enriched prompts for execution, then restore originals
