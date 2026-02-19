@@ -21,6 +21,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/memory"
 	"github.com/lyndonlyu/apex/internal/planner"
 	"github.com/lyndonlyu/apex/internal/pool"
+	"github.com/lyndonlyu/apex/internal/retry"
 	"github.com/lyndonlyu/apex/internal/snapshot"
 	"github.com/spf13/cobra"
 )
@@ -190,6 +191,13 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	runner := pool.NewClaudeRunner(exec)
 	p := pool.New(cfg.Pool.MaxConcurrent, runner)
+	retryPolicy := retry.Policy{
+		MaxAttempts: cfg.Retry.MaxAttempts,
+		InitDelay:   time.Duration(cfg.Retry.InitDelaySeconds) * time.Second,
+		Multiplier:  cfg.Retry.Multiplier,
+		MaxDelay:    time.Duration(cfg.Retry.MaxDelaySeconds) * time.Second,
+	}
+	p.RetryPolicy = &retryPolicy
 
 	// Second kill switch check right before execution
 	if ks.IsActive() {

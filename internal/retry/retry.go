@@ -2,6 +2,7 @@ package retry
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -49,7 +50,7 @@ var retriableKeywords = []string{
 // process exit code, and stderr content.
 func Classify(err error, exitCode int, stderr string) ErrorKind {
 	// Context errors are always retriable.
-	if err == context.DeadlineExceeded || err == context.Canceled {
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return Retriable
 	}
 
@@ -109,6 +110,9 @@ func (p Policy) delay(attempt int) time.Duration {
 // without further attempts. For Retriable/Unknown, it waits with exponential
 // backoff before the next attempt. Respects context cancellation.
 func (p Policy) Execute(ctx context.Context, fn func() (string, error, ErrorKind)) (string, error) {
+	if p.MaxAttempts <= 0 {
+		p.MaxAttempts = 1
+	}
 	var lastErr error
 	for attempt := 0; attempt < p.MaxAttempts; attempt++ {
 		result, err, kind := fn()
