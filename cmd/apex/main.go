@@ -31,6 +31,7 @@ func init() {
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(killSwitchCmd)
 	rootCmd.AddCommand(resumeCmd)
+	rootCmd.AddCommand(snapshotCmd)
 }
 
 func main() {
