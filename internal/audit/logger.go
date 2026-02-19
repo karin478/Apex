@@ -11,8 +11,29 @@ import (
 	"strings"
 	"time"
 
+	"regexp"
+
 	"github.com/google/uuid"
 )
+
+// dateFileRe matches audit log files named YYYY-MM-DD.jsonl
+var dateFileRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\.jsonl$`)
+
+// auditFiles returns only date-named .jsonl files from the audit directory,
+// excluding non-audit files like anchors.jsonl.
+func auditFiles(dir string) ([]string, error) {
+	all, err := filepath.Glob(filepath.Join(dir, "*.jsonl"))
+	if err != nil {
+		return nil, err
+	}
+	var filtered []string
+	for _, f := range all {
+		if dateFileRe.MatchString(filepath.Base(f)) {
+			filtered = append(filtered, f)
+		}
+	}
+	return filtered, nil
+}
 
 type Entry struct {
 	Task         string
@@ -53,7 +74,7 @@ func NewLogger(dir string) (*Logger, error) {
 }
 
 func (l *Logger) initLastHash() {
-	files, err := filepath.Glob(filepath.Join(l.dir, "*.jsonl"))
+	files, err := auditFiles(l.dir)
 	if err != nil || len(files) == 0 {
 		return
 	}
@@ -124,7 +145,7 @@ func (l *Logger) Log(entry Entry) error {
 }
 
 func (l *Logger) Recent(n int) ([]Record, error) {
-	files, err := filepath.Glob(filepath.Join(l.dir, "*.jsonl"))
+	files, err := auditFiles(l.dir)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +176,7 @@ func (l *Logger) Recent(n int) ([]Record, error) {
 }
 
 func (l *Logger) Verify() (bool, int, error) {
-	files, err := filepath.Glob(filepath.Join(l.dir, "*.jsonl"))
+	files, err := auditFiles(l.dir)
 	if err != nil {
 		return false, -1, err
 	}

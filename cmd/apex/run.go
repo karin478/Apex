@@ -321,6 +321,16 @@ func runTask(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Daily anchor — create/update after audit entries are written
+	if logger != nil {
+		cwd, _ := os.Getwd()
+		if created, anchorErr := audit.MaybeCreateAnchor(logger, cwd); anchorErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: anchor creation failed: %v\n", anchorErr)
+		} else if created {
+			fmt.Println("Daily audit anchor updated.")
+		}
+	}
+
 	// Save run manifest
 	runsDir := filepath.Join(cfg.BaseDir, "runs")
 	manifestStore := manifest.NewStore(runsDir)
