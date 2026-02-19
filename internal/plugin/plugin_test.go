@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -120,4 +121,101 @@ func TestRegistryGet(t *testing.T) {
 
 	_, ok = reg.Get("nonexistent")
 	assert.False(t, ok)
+}
+
+func TestRegistryEnableDisable(t *testing.T) {
+	dir := t.TempDir()
+	writePluginYAML(t, dir, "my-plugin", "1.0.0", "reasoning", true)
+
+	reg := NewRegistry(dir)
+	reg.Scan()
+
+	// Disable
+	err := reg.Disable("my-plugin")
+	require.NoError(t, err)
+
+	p, _ := reg.Get("my-plugin")
+	assert.False(t, p.Enabled)
+
+	// Verify file was updated
+	reloaded, _ := LoadPlugin(filepath.Join(dir, "my-plugin"))
+	assert.False(t, reloaded.Enabled)
+
+	// Enable
+	err = reg.Enable("my-plugin")
+	require.NoError(t, err)
+
+	p, _ = reg.Get("my-plugin")
+	assert.True(t, p.Enabled)
+}
+
+func TestRegistryEnableNotFound(t *testing.T) {
+	dir := t.TempDir()
+	reg := NewRegistry(dir)
+	reg.Scan()
+	assert.Error(t, reg.Enable("nonexistent"))
+}
+
+func TestRegistryVerifyOK(t *testing.T) {
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, "my-plugin")
+	os.MkdirAll(pluginDir, 0755)
+
+	// Write plugin.yaml without checksum first
+	content := `name: my-plugin
+version: "1.0.0"
+type: reasoning
+description: "Test"
+author: test
+enabled: true
+`
+	// Compute checksum of content
+	hash := sha256.Sum256([]byte(content))
+	checksum := fmt.Sprintf("sha256:%x", hash)
+
+	// Write with checksum
+	fullContent := content + fmt.Sprintf("checksum: \"%s\"\n", checksum)
+	os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(fullContent), 0644)
+
+	reg := NewRegistry(dir)
+	reg.Scan()
+
+	ok, err := reg.Verify("my-plugin")
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+func TestRegistryVerifyMismatch(t *testing.T) {
+	dir := t.TempDir()
+	pluginDir := filepath.Join(dir, "my-plugin")
+	os.MkdirAll(pluginDir, 0755)
+
+	content := `name: my-plugin
+version: "1.0.0"
+type: reasoning
+description: "Test"
+author: test
+enabled: true
+checksum: "sha256:wronghash"
+`
+	os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(content), 0644)
+
+	reg := NewRegistry(dir)
+	reg.Scan()
+
+	ok, err := reg.Verify("my-plugin")
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
+func TestRegistryVerifyEmptyChecksum(t *testing.T) {
+	dir := t.TempDir()
+	writePluginYAML(t, dir, "my-plugin", "1.0.0", "reasoning", true)
+
+	reg := NewRegistry(dir)
+	reg.Scan()
+
+	ok, err := reg.Verify("my-plugin")
+	require.NoError(t, err)
+	assert.False(t, ok, "empty checksum should fail verification")
 }

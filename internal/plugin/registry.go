@@ -1,9 +1,15 @@
 package plugin
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Registry struct {
@@ -56,4 +62,57 @@ func (r *Registry) Get(name string) (*Plugin, bool) {
 		}
 	}
 	return nil, false
+}
+
+var checksumLineRe = regexp.MustCompile(`(?m)^checksum:.*\n?`)
+
+func (r *Registry) Enable(name string) error {
+	return r.setEnabled(name, true)
+}
+
+func (r *Registry) Disable(name string) error {
+	return r.setEnabled(name, false)
+}
+
+func (r *Registry) setEnabled(name string, enabled bool) error {
+	p, ok := r.Get(name)
+	if !ok {
+		return fmt.Errorf("plugin %q not found", name)
+	}
+	p.Enabled = enabled
+
+	// Write back to plugin.yaml
+	path := filepath.Join(p.Dir, pluginFile)
+	data, err := yaml.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("marshal plugin: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return fmt.Errorf("write plugin.yaml: %w", err)
+	}
+	return nil
+}
+
+func (r *Registry) Verify(name string) (bool, error) {
+	p, ok := r.Get(name)
+	if !ok {
+		return false, fmt.Errorf("plugin %q not found", name)
+	}
+	if p.Checksum == "" {
+		return false, nil
+	}
+
+	// Read raw file content
+	path := filepath.Join(p.Dir, pluginFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+
+	// Remove the checksum line and compute hash of the rest
+	content := checksumLineRe.ReplaceAllString(string(data), "")
+	hash := sha256.Sum256([]byte(content))
+	expected := fmt.Sprintf("sha256:%x", hash)
+
+	return strings.EqualFold(p.Checksum, expected), nil
 }
