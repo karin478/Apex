@@ -88,6 +88,13 @@ func TestShouldConfirm(t *testing.T) {
 func TestShouldReject(t *testing.T) {
 	assert.False(t, LOW.ShouldReject())
 	assert.False(t, MEDIUM.ShouldReject())
-	assert.True(t, HIGH.ShouldReject())
+	assert.False(t, HIGH.ShouldReject())
 	assert.True(t, CRITICAL.ShouldReject())
+}
+
+func TestShouldRequireApproval(t *testing.T) {
+	assert.False(t, LOW.ShouldRequireApproval())
+	assert.False(t, MEDIUM.ShouldRequireApproval())
+	assert.True(t, HIGH.ShouldRequireApproval())
+	assert.False(t, CRITICAL.ShouldRequireApproval())
 }

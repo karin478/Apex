@@ -35,7 +35,11 @@ func (r RiskLevel) ShouldConfirm() bool {
 }
 
 func (r RiskLevel) ShouldReject() bool {
-	return r >= HIGH
+	return r >= CRITICAL
+}
+
+func (r RiskLevel) ShouldRequireApproval() bool {
+	return r == HIGH
 }
 
 var criticalKeywords = []string{
