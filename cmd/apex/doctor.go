@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/spf13/cobra"
@@ -23,6 +25,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	fmt.Println("===========")
 	fmt.Println()
 
+	// 1. Hash chain verification
 	fmt.Print("Audit hash chain... ")
 	logger, err := audit.NewLogger(auditDir)
 	if err != nil {
@@ -41,6 +44,66 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("BROKEN at record #%d\n", brokenAt)
 		fmt.Println("  The audit log may have been tampered with.")
+	}
+
+	// 2. Daily anchor verification
+	fmt.Print("Daily anchors...... ")
+	results, err := audit.VerifyAnchors(logger)
+	if err != nil {
+		fmt.Printf("ERROR: %v\n", err)
+	} else if len(results) == 0 {
+		fmt.Println("SKIP (no anchors yet)")
+	} else {
+		allValid := true
+		for _, r := range results {
+			if !r.Valid {
+				allValid = false
+				break
+			}
+		}
+		lastDate := results[len(results)-1].Date
+		if allValid {
+			fmt.Printf("OK (last: %s, %d anchors verified)\n", lastDate, len(results))
+		} else {
+			fmt.Printf("ISSUES FOUND (%d anchors)\n", len(results))
+		}
+		for _, r := range results {
+			if r.Valid {
+				fmt.Printf("  %s: OK\n", r.Date)
+			} else {
+				fmt.Printf("  %s: MISMATCH — %s\n", r.Date, r.Error)
+			}
+		}
+	}
+
+	// 3. Git tag anchor verification (best-effort)
+	fmt.Print("Git tag anchors.... ")
+	anchors, _ := audit.LoadAnchors(auditDir)
+	if len(anchors) == 0 {
+		fmt.Println("SKIP (no anchors)")
+	} else {
+		cwd, _ := os.Getwd()
+		tagOut, tagErr := exec.Command("git", "-C", cwd, "tag", "-l", "apex-audit-anchor-*").Output()
+		if tagErr != nil {
+			fmt.Println("SKIP (not a git repo)")
+		} else {
+			tags := strings.Split(strings.TrimSpace(string(tagOut)), "\n")
+			tagSet := make(map[string]bool)
+			for _, t := range tags {
+				tagSet[strings.TrimSpace(t)] = true
+			}
+			found := 0
+			for _, a := range anchors {
+				if tagSet[a.GitTag] {
+					found++
+				}
+			}
+			if found == len(anchors) {
+				fmt.Printf("OK (%d/%d tags found)\n", found, len(anchors))
+			} else {
+				fmt.Printf("PARTIAL (%d/%d tags found)\n", found, len(anchors))
+			}
+		}
 	}
 
 	return nil
