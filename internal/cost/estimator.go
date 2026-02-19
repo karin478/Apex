@@ -27,7 +27,7 @@ func EstimateRun(enrichedTasks map[string]string, model string) *Estimate {
 
 	totalInput := 0
 	for _, text := range enrichedTasks {
-		totalInput += estimateTokens(text)
+		totalInput += EstimateTokens(text)
 	}
 
 	// Estimate output as 2x input (typical for code generation)
@@ -63,7 +63,8 @@ func lookupPricing(model string) (float64, float64) {
 	return 3.0, 15.0
 }
 
-func estimateTokens(text string) int {
+// EstimateTokens approximates the token count for a text string (~chars/3).
+func EstimateTokens(text string) int {
 	runes := []rune(text)
 	if len(runes) == 0 {
 		return 0

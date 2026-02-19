@@ -28,7 +28,7 @@ import (
 var dryRun bool
 
 func init() {
-	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan and cost estimate without running")
+	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan and cost estimate without executing tasks (planning step still runs)")
 }
 
 var runCmd = &cobra.Command{
@@ -65,13 +65,13 @@ func runTask(cmd *cobra.Command, args []string) error {
 	risk := governance.Classify(task)
 	fmt.Printf("[%s] Risk level: %s\n", task, risk)
 
-	// Gate by risk level
+	// Gate by risk level (CRITICAL always rejected, even in dry-run)
 	if risk.ShouldReject() {
 		fmt.Printf("Task rejected (%s risk). Break it into smaller, safer steps.\n", risk)
 		return nil
 	}
 
-	if risk.ShouldConfirm() {
+	if !dryRun && risk.ShouldConfirm() {
 		fmt.Printf("Warning: %s risk detected. Proceed? (y/n): ", risk)
 		var answer string
 		fmt.Scanln(&answer)
@@ -101,8 +101,8 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Plan: %d steps\n", len(d.Nodes))
 
-	// Approval gate for HIGH risk tasks
-	if risk.ShouldRequireApproval() {
+	// Approval gate for HIGH risk tasks (skipped in dry-run)
+	if !dryRun && risk.ShouldRequireApproval() {
 		reviewer := approval.NewReviewer(os.Stdin, os.Stdout)
 		result, reviewErr := reviewer.Review(d.NodeSlice(), governance.Classify)
 		if reviewErr != nil {
@@ -140,7 +140,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	// Dry-run: print report and exit
 	if dryRun {
-		fmt.Println("\n[DRY RUN]")
+		fmt.Printf("\n[DRY RUN] %s\n", task)
 		fmt.Printf("Risk: %s", risk)
 		if risk.ShouldRequireApproval() {
 			fmt.Print(" (approval required for execution)")
@@ -157,10 +157,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 		totalTokens := 0
 		for i, n := range d.NodeSlice() {
 			if enriched, ok := enrichedTasks[n.ID]; ok {
-				tokens := len([]rune(enriched)) / 3
-				if tokens == 0 {
-					tokens = 1
-				}
+				tokens := cost.EstimateTokens(enriched)
 				totalTokens += tokens
 				fmt.Fprintf(os.Stdout, "  [%d] %d tokens\n", i+1, tokens)
 			}
