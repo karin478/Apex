@@ -23,10 +23,19 @@
 | 8 | Human-in-the-Loop Approval | `phase8-approval-design.md` | Done |
 | 9 | Dry-Run Mode | `phase9-dry-run-design.md` | Done |
 | 10 | Fault Tolerance & Retry | `phase10-fault-tolerance-design.md` | Done |
+| E2E | E2E Testing Module | `e2e-testing-design.md` | Done |
 
 ## Current: Phase 11 — TBD
 
 No phase in progress.
+
+## Testing
+
+| Suite | Command | Coverage |
+|-------|---------|----------|
+| Unit tests | `make test` | 18 packages, 21 test files |
+| E2E tests (mock) | `make e2e` | 24 tests, all CLI commands |
+| E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
 
