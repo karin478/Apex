@@ -17,6 +17,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
 	"github.com/lyndonlyu/apex/internal/governance"
+	"github.com/lyndonlyu/apex/internal/health"
 	"github.com/lyndonlyu/apex/internal/killswitch"
 	"github.com/lyndonlyu/apex/internal/manifest"
 	"github.com/lyndonlyu/apex/internal/memory"
@@ -65,9 +66,21 @@ func runTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("kill switch is active at %s — use 'apex resume' to deactivate", ks.Path())
 	}
 
+	// Health pre-flight gate
+	report := health.Evaluate(cfg.BaseDir)
+	if report.Level == health.CRITICAL {
+		fmt.Println("[HEALTH] System health CRITICAL — run 'apex doctor' to diagnose")
+		return nil
+	}
+
 	// Classify risk
 	risk := governance.Classify(task)
 	fmt.Printf("[%s] Risk level: %s\n", task, risk)
+
+	if report.Level == health.RED && !risk.ShouldAutoApprove() {
+		fmt.Printf("[HEALTH] System health RED — only LOW-risk tasks allowed (task risk: %s)\n", risk)
+		return nil
+	}
 
 	// Gate by risk level (CRITICAL always rejected, even in dry-run)
 	if risk.ShouldReject() {

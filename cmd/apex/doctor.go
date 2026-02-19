@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/lyndonlyu/apex/internal/audit"
+	"github.com/lyndonlyu/apex/internal/health"
 	"github.com/spf13/cobra"
 )
 
@@ -104,6 +105,29 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 				fmt.Printf("PARTIAL (%d/%d tags found)\n", found, len(anchors))
 			}
 		}
+	}
+
+	// 4. Health evaluation
+	baseDir := filepath.Join(home, ".apex")
+	report := health.Evaluate(baseDir)
+
+	fmt.Println()
+
+	levelIndicator := map[health.Level]string{
+		health.GREEN:    "\u2713",
+		health.YELLOW:   "!",
+		health.RED:      "\u2717",
+		health.CRITICAL: "\u2717\u2717",
+	}
+
+	fmt.Printf("System Health: %s %s\n", report.Level, levelIndicator[report.Level])
+
+	for _, c := range report.Components {
+		indicator := "\u2713"
+		if !c.Healthy {
+			indicator = "\u2717"
+		}
+		fmt.Printf("  [%s] %-20s%s\n", indicator, c.Name, c.Detail)
 	}
 
 	return nil
