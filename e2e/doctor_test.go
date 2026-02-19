@@ -85,3 +85,17 @@ func TestDoctorCorruptedChain(t *testing.T) {
 	assert.True(t, containsAny(stdout, "BROKEN", "ERROR"),
 		"doctor should report BROKEN or ERROR for corrupted chain; got stdout=%s", stdout)
 }
+
+// TestDoctorAnchorVerification verifies that doctor checks anchor integrity.
+func TestDoctorAnchorVerification(t *testing.T) {
+	env := newTestEnv(t)
+
+	// Run a task to create audit + anchor
+	env.runApex("run", "say hello")
+
+	// Doctor should report anchor OK
+	stdout, _, code := env.runApex("doctor")
+	assert.Equal(t, 0, code)
+	assert.Contains(t, stdout, "Daily anchors")
+	assert.Contains(t, stdout, "OK")
+}
