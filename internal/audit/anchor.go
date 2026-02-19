@@ -90,6 +90,41 @@ func createGitTag(workDir, tagName, chainHash string, recordCount int) bool {
 	return true
 }
 
+// AnchorResult holds the verification result for a single anchor.
+type AnchorResult struct {
+	Date  string
+	Valid bool
+	Error string // empty if valid
+}
+
+// VerifyAnchors checks all anchors against the audit chain.
+func VerifyAnchors(logger *Logger) ([]AnchorResult, error) {
+	anchors, err := LoadAnchors(logger.Dir())
+	if err != nil {
+		return nil, err
+	}
+
+	var results []AnchorResult
+	for _, a := range anchors {
+		hash, count, err := logger.LastHashForDate(a.Date)
+		if err != nil {
+			results = append(results, AnchorResult{Date: a.Date, Valid: false, Error: fmt.Sprintf("read error: %v", err)})
+			continue
+		}
+		if count == 0 {
+			results = append(results, AnchorResult{Date: a.Date, Valid: false, Error: "no audit records for this date"})
+			continue
+		}
+		if hash != a.ChainHash {
+			results = append(results, AnchorResult{Date: a.Date, Valid: false,
+				Error: fmt.Sprintf("chain_hash mismatch: anchor=%s, actual=%s", a.ChainHash, hash)})
+			continue
+		}
+		results = append(results, AnchorResult{Date: a.Date, Valid: true})
+	}
+	return results, nil
+}
+
 // MaybeCreateAnchor checks today's audit records and creates/updates the daily anchor.
 // workDir is used for git tag creation (empty string = skip git tag).
 // Returns (true, nil) if an anchor was created or updated.

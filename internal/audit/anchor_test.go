@@ -167,3 +167,60 @@ func TestCreateGitTagForceUpdate(t *testing.T) {
 	out, _ := c.Output()
 	assert.Contains(t, string(out), "hash2")
 }
+
+func TestVerifyAnchorsAllValid(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+
+	logger.Log(Entry{Task: "task-0", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	logger.Log(Entry{Task: "task-1", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	MaybeCreateAnchor(logger, "")
+
+	results, err := VerifyAnchors(logger)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.True(t, results[0].Valid)
+	assert.Equal(t, time.Now().Format("2006-01-02"), results[0].Date)
+}
+
+func TestVerifyAnchorsMismatch(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+
+	logger.Log(Entry{Task: "task-0", RiskLevel: "LOW", Outcome: "success", Duration: time.Second, Model: "test"})
+	MaybeCreateAnchor(logger, "")
+
+	// Tamper with anchor
+	anchors, _ := LoadAnchors(dir)
+	anchors[0].ChainHash = "tampered-hash"
+	WriteAnchor(dir, anchors[0])
+
+	results, err := VerifyAnchors(logger)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.False(t, results[0].Valid)
+	assert.Contains(t, results[0].Error, "mismatch")
+}
+
+func TestVerifyAnchorsNoAnchors(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+
+	results, err := VerifyAnchors(logger)
+	require.NoError(t, err)
+	assert.Empty(t, results)
+}
+
+func TestVerifyAnchorsMissingAuditDate(t *testing.T) {
+	dir := t.TempDir()
+	logger, _ := NewLogger(dir)
+
+	// Write anchor for a date with no audit records
+	WriteAnchor(dir, Anchor{Date: "2020-01-01", ChainHash: "orphan", RecordCount: 5, CreatedAt: "t1"})
+
+	results, err := VerifyAnchors(logger)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	assert.False(t, results[0].Valid)
+	assert.Contains(t, results[0].Error, "no audit records")
+}
