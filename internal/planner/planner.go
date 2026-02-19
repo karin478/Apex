@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
@@ -89,14 +88,8 @@ func Plan(ctx context.Context, exec *executor.Executor, task string, model strin
 		return SingleNodeFallback(task), nil
 	}
 
-	planExec := executor.New(executor.Options{
-		Model:   model,
-		Effort:  "high",
-		Timeout: time.Duration(timeout) * time.Second,
-	})
-
 	prompt := BuildPlannerPrompt(task)
-	result, err := planExec.Run(ctx, prompt)
+	result, err := exec.Run(ctx, prompt)
 	if err != nil {
 		return SingleNodeFallback(task), nil
 	}
