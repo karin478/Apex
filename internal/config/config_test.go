@@ -129,6 +129,32 @@ func TestLoadConfigPhase4Override(t *testing.T) {
 	assert.Equal(t, 30000, cfg.Context.TokenBudget)
 }
 
+func TestDefaultConfigPhase10(t *testing.T) {
+	cfg := Default()
+	assert.Equal(t, 3, cfg.Retry.MaxAttempts)
+	assert.Equal(t, 2, cfg.Retry.InitDelaySeconds)
+	assert.Equal(t, 2.0, cfg.Retry.Multiplier)
+	assert.Equal(t, 30, cfg.Retry.MaxDelaySeconds)
+}
+
+func TestLoadConfigPhase10Override(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	content := []byte(`retry:
+  max_attempts: 5
+  init_delay_seconds: 1
+  multiplier: 3.0
+  max_delay_seconds: 60
+`)
+	require.NoError(t, os.WriteFile(configPath, content, 0644))
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, 5, cfg.Retry.MaxAttempts)
+	assert.Equal(t, 1, cfg.Retry.InitDelaySeconds)
+	assert.Equal(t, 3.0, cfg.Retry.Multiplier)
+	assert.Equal(t, 60, cfg.Retry.MaxDelaySeconds)
+}
+
 func TestEnsureDirs(t *testing.T) {
 	dir := t.TempDir()
 	cfg := Default()

@@ -39,6 +39,13 @@ type ContextConfig struct {
 	TokenBudget int `yaml:"token_budget"`
 }
 
+type RetryConfig struct {
+	MaxAttempts      int     `yaml:"max_attempts"`
+	InitDelaySeconds int     `yaml:"init_delay_seconds"`
+	Multiplier       float64 `yaml:"multiplier"`
+	MaxDelaySeconds  int     `yaml:"max_delay_seconds"`
+}
+
 type Config struct {
 	Claude     ClaudeConfig     `yaml:"claude"`
 	Governance GovernanceConfig `yaml:"governance"`
@@ -46,6 +53,7 @@ type Config struct {
 	Pool       PoolConfig       `yaml:"pool"`
 	Embedding  EmbeddingConfig  `yaml:"embedding"`
 	Context    ContextConfig    `yaml:"context"`
+	Retry      RetryConfig      `yaml:"retry"`
 	BaseDir    string           `yaml:"-"`
 }
 
@@ -77,6 +85,12 @@ func Default() *Config {
 		},
 		Context: ContextConfig{
 			TokenBudget: 60000,
+		},
+		Retry: RetryConfig{
+			MaxAttempts:      3,
+			InitDelaySeconds: 2,
+			Multiplier:       2.0,
+			MaxDelaySeconds:  30,
 		},
 		BaseDir: filepath.Join(home, ".apex"),
 	}
@@ -130,6 +144,18 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Context.TokenBudget == 0 {
 		cfg.Context.TokenBudget = 60000
+	}
+	if cfg.Retry.MaxAttempts == 0 {
+		cfg.Retry.MaxAttempts = 3
+	}
+	if cfg.Retry.InitDelaySeconds == 0 {
+		cfg.Retry.InitDelaySeconds = 2
+	}
+	if cfg.Retry.Multiplier == 0 {
+		cfg.Retry.Multiplier = 2.0
+	}
+	if cfg.Retry.MaxDelaySeconds == 0 {
+		cfg.Retry.MaxDelaySeconds = 30
 	}
 	if cfg.BaseDir == "" {
 		home, _ := os.UserHomeDir()
