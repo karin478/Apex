@@ -1,9 +1,12 @@
 package reasoning
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,4 +85,111 @@ func TestParseVerdictMalformed(t *testing.T) {
 	// Fallback: decision="revise", summary=full text
 	assert.Equal(t, "revise", v.Decision)
 	assert.Contains(t, v.Summary, "good idea")
+}
+
+// mockRunner implements reasoning.Runner for testing.
+type mockRunner struct {
+	responses []string
+	calls     []string
+	callIndex int
+}
+
+func (m *mockRunner) RunTask(ctx context.Context, task string) (string, error) {
+	m.calls = append(m.calls, task)
+	if m.callIndex < len(m.responses) {
+		resp := m.responses[m.callIndex]
+		m.callIndex++
+		return resp, nil
+	}
+	return "fallback response", nil
+}
+
+func TestRunReview(t *testing.T) {
+	mock := &mockRunner{
+		responses: []string{
+			"Redis is great for caching because...",
+			"However, Redis has these risks...",
+			"Let me address those concerns...",
+			`{"decision":"approve","summary":"Redis is viable","risks":["single point of failure"],"suggested_actions":["add sentinel"]}`,
+		},
+	}
+
+	result, err := RunReview(context.Background(), mock, "Use Redis for caching")
+	require.NoError(t, err)
+
+	assert.Equal(t, "Use Redis for caching", result.Proposal)
+	assert.NotEmpty(t, result.ID)
+	assert.NotEmpty(t, result.CreatedAt)
+	require.Len(t, result.Steps, 4)
+
+	// Verify roles
+	assert.Equal(t, "advocate", result.Steps[0].Role)
+	assert.Equal(t, "critic", result.Steps[1].Role)
+	assert.Equal(t, "advocate", result.Steps[2].Role)
+	assert.Equal(t, "judge", result.Steps[3].Role)
+
+	// Verify outputs
+	assert.Contains(t, result.Steps[0].Output, "Redis is great")
+	assert.Contains(t, result.Steps[1].Output, "risks")
+
+	// Verify verdict parsed
+	assert.Equal(t, "approve", result.Verdict.Decision)
+	assert.Equal(t, "Redis is viable", result.Verdict.Summary)
+	assert.Equal(t, []string{"single point of failure"}, result.Verdict.Risks)
+
+	// Verify 4 calls were made to the runner
+	assert.Len(t, mock.calls, 4)
+
+	// Verify context threading: advocate prompt includes proposal
+	assert.Contains(t, mock.calls[0], "Use Redis for caching")
+	// Critic prompt includes advocate output
+	assert.Contains(t, mock.calls[1], "Redis is great")
+	// Advocate response includes critic output
+	assert.Contains(t, mock.calls[2], "risks")
+	// Judge prompt includes all previous outputs
+	assert.Contains(t, mock.calls[3], "Redis is great")
+	assert.Contains(t, mock.calls[3], "risks")
+	assert.Contains(t, mock.calls[3], "address those concerns")
+}
+
+func TestRunReviewWithProgress(t *testing.T) {
+	mock := &mockRunner{
+		responses: []string{
+			"advocate output",
+			"critic output",
+			"response output",
+			`{"decision":"revise","summary":"needs work","risks":[],"suggested_actions":[]}`,
+		},
+	}
+
+	var progressSteps []int
+	progress := func(step int, dur time.Duration) {
+		progressSteps = append(progressSteps, step)
+	}
+
+	result, err := RunReviewWithProgress(context.Background(), mock, "test proposal", progress)
+	require.NoError(t, err)
+	assert.Len(t, result.Steps, 4)
+	assert.Equal(t, []int{0, 1, 2, 3}, progressSteps)
+	assert.Equal(t, "revise", result.Verdict.Decision)
+}
+
+type errorRunner struct {
+	callCount int
+	failAt    int
+}
+
+func (e *errorRunner) RunTask(ctx context.Context, task string) (string, error) {
+	e.callCount++
+	if e.callCount > e.failAt {
+		return "", fmt.Errorf("executor failed")
+	}
+	return "output", nil
+}
+
+func TestRunReviewExecutorError(t *testing.T) {
+	errRunner := &errorRunner{failAt: 1}
+	_, err := RunReview(context.Background(), errRunner, "test proposal")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "critic")
 }
