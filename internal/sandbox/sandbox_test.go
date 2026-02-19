@@ -1,6 +1,7 @@
 package sandbox
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,4 +40,14 @@ func TestParseLevel(t *testing.T) {
 			assert.Equal(t, tt.want, got, "input: %s", tt.input)
 		}
 	}
+}
+
+func TestNoneBackend(t *testing.T) {
+	sb := &NoneSandbox{}
+	assert.Equal(t, None, sb.Level())
+
+	bin, args, err := sb.Wrap(context.Background(), "claude", []string{"-p", "hello"})
+	assert.NoError(t, err)
+	assert.Equal(t, "claude", bin)
+	assert.Equal(t, []string{"-p", "hello"}, args)
 }
