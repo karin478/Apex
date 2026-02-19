@@ -2,6 +2,7 @@ package sandbox
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,4 +80,42 @@ func TestUlimitDefaults(t *testing.T) {
 	// Should use defaults
 	assert.Contains(t, args[1], "ulimit")
 	assert.Contains(t, args[1], "exec claude")
+}
+
+func TestDockerBackend(t *testing.T) {
+	sb := &DockerSandbox{
+		Image:       "ubuntu:22.04",
+		MemoryLimit: "2g",
+		CPULimit:    "2",
+		WorkDir:     "/tmp/test-workspace",
+	}
+	assert.Equal(t, Docker, sb.Level())
+
+	bin, args, err := sb.Wrap(context.Background(), "claude", []string{"-p", "hello"})
+	assert.NoError(t, err)
+	assert.Equal(t, "docker", bin)
+
+	joined := strings.Join(args, " ")
+	assert.Contains(t, joined, "run")
+	assert.Contains(t, joined, "--rm")
+	assert.Contains(t, joined, "--network=none")
+	assert.Contains(t, joined, "--memory=2g")
+	assert.Contains(t, joined, "--cpus=2")
+	assert.Contains(t, joined, "-v /tmp/test-workspace:/workspace:rw")
+	assert.Contains(t, joined, "-w /workspace")
+	assert.Contains(t, joined, "ubuntu:22.04")
+	assert.Contains(t, joined, "claude")
+	assert.Contains(t, joined, "-p")
+	assert.Contains(t, joined, "hello")
+}
+
+func TestDockerBackendDefaults(t *testing.T) {
+	sb := &DockerSandbox{}
+	_, args, err := sb.Wrap(context.Background(), "claude", []string{"-p", "hi"})
+	assert.NoError(t, err)
+
+	joined := strings.Join(args, " ")
+	assert.Contains(t, joined, "ubuntu:22.04") // default image
+	assert.Contains(t, joined, "--memory=2g")   // default mem
+	assert.Contains(t, joined, "--cpus=2")      // default cpu
 }
