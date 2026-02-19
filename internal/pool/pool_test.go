@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/lyndonlyu/apex/internal/dag"
+	"github.com/lyndonlyu/apex/internal/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -135,4 +137,119 @@ func TestExecuteContextCancel(t *testing.T) {
 
 	err := p.Execute(ctx, d)
 	assert.Error(t, err)
+}
+
+// TaskError carries structured error info for retry classification.
+type TaskError struct {
+	ExitCode int
+	Stderr   string
+	Msg      string
+}
+
+func (e *TaskError) Error() string                { return e.Msg }
+func (e *TaskError) ExitInfo() (int, string)      { return e.ExitCode, e.Stderr }
+
+type retryRunner struct {
+	attempts  map[string]*atomic.Int32
+	failUntil int // fail this many times before succeeding
+	exitCode  int
+	stderr    string
+	mu        sync.Mutex
+}
+
+func newRetryRunner(failUntil int, exitCode int, stderr string) *retryRunner {
+	return &retryRunner{
+		attempts:  make(map[string]*atomic.Int32),
+		failUntil: failUntil,
+		exitCode:  exitCode,
+		stderr:    stderr,
+	}
+}
+
+func (r *retryRunner) RunTask(ctx context.Context, task string) (string, error) {
+	r.mu.Lock()
+	if _, ok := r.attempts[task]; !ok {
+		r.attempts[task] = &atomic.Int32{}
+	}
+	counter := r.attempts[task]
+	r.mu.Unlock()
+
+	n := int(counter.Add(1))
+	if n <= r.failUntil {
+		return "", &TaskError{ExitCode: r.exitCode, Stderr: r.stderr, Msg: fmt.Sprintf("attempt %d failed", n)}
+	}
+	return "ok", nil
+}
+
+func (r *retryRunner) attemptsFor(task string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if c, ok := r.attempts[task]; ok {
+		return int(c.Load())
+	}
+	return 0
+}
+
+func TestExecuteWithRetrySuccess(t *testing.T) {
+	nodes := []dag.NodeSpec{
+		{ID: "a", Task: "flaky", Depends: []string{}},
+	}
+	d, _ := dag.New(nodes)
+	runner := newRetryRunner(2, 1, "connection refused")
+
+	policy := retry.Policy{MaxAttempts: 3, InitDelay: time.Millisecond, Multiplier: 1.0, MaxDelay: time.Second}
+	p := New(4, runner)
+	p.RetryPolicy = &policy
+
+	err := p.Execute(context.Background(), d)
+	require.NoError(t, err)
+	assert.Equal(t, dag.Completed, d.Nodes["a"].Status)
+	assert.Equal(t, 3, runner.attemptsFor("flaky"))
+}
+
+func TestExecuteWithRetryExhausted(t *testing.T) {
+	nodes := []dag.NodeSpec{
+		{ID: "a", Task: "always-fail", Depends: []string{}},
+	}
+	d, _ := dag.New(nodes)
+	runner := newRetryRunner(999, 1, "connection refused")
+
+	policy := retry.Policy{MaxAttempts: 3, InitDelay: time.Millisecond, Multiplier: 1.0, MaxDelay: time.Second}
+	p := New(4, runner)
+	p.RetryPolicy = &policy
+
+	err := p.Execute(context.Background(), d)
+	assert.NoError(t, err) // pool returns nil; failure recorded in DAG
+	assert.Equal(t, dag.Failed, d.Nodes["a"].Status)
+	assert.Equal(t, 3, runner.attemptsFor("always-fail"))
+}
+
+func TestExecuteWithRetryNonRetriable(t *testing.T) {
+	nodes := []dag.NodeSpec{
+		{ID: "a", Task: "perm-fail", Depends: []string{}},
+	}
+	d, _ := dag.New(nodes)
+	runner := newRetryRunner(999, 2, "permission denied")
+
+	policy := retry.Policy{MaxAttempts: 3, InitDelay: time.Millisecond, Multiplier: 1.0, MaxDelay: time.Second}
+	p := New(4, runner)
+	p.RetryPolicy = &policy
+
+	err := p.Execute(context.Background(), d)
+	assert.NoError(t, err)
+	assert.Equal(t, dag.Failed, d.Nodes["a"].Status)
+	assert.Equal(t, 1, runner.attemptsFor("perm-fail")) // stopped after 1
+}
+
+func TestExecuteWithoutRetryPolicyFallsBack(t *testing.T) {
+	nodes := []dag.NodeSpec{
+		{ID: "a", Task: "fail-task", Depends: []string{}},
+	}
+	d, _ := dag.New(nodes)
+	runner := &failRunner{failKeywords: []string{"fail"}}
+	p := New(4, runner) // no RetryPolicy set
+
+	err := p.Execute(context.Background(), d)
+	assert.NoError(t, err)
+	assert.Equal(t, dag.Failed, d.Nodes["a"].Status) // immediate fail, no retry
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lyndonlyu/apex/internal/dag"
+	"github.com/lyndonlyu/apex/internal/retry"
 )
 
 // Runner executes a single task and returns the result.
@@ -15,8 +16,9 @@ type Runner interface {
 
 // Pool manages concurrent execution of DAG nodes using a bounded worker pool.
 type Pool struct {
-	maxWorkers int
-	runner     Runner
+	maxWorkers  int
+	runner      Runner
+	RetryPolicy *retry.Policy
 }
 
 // New creates a new Pool with the given concurrency limit and task runner.
@@ -62,12 +64,33 @@ func (p *Pool) Execute(ctx context.Context, d *dag.DAG) error {
 				defer wg.Done()
 				defer func() { <-sem }()
 
-				result, err := p.runner.RunTask(ctx, n.Task)
-				if err != nil {
-					d.MarkFailed(n.ID, err.Error())
-					return
+				if p.RetryPolicy != nil {
+					result, err := p.RetryPolicy.Execute(ctx, func() (string, error, retry.ErrorKind) {
+						res, runErr := p.runner.RunTask(ctx, n.Task)
+						if runErr != nil {
+							exitCode := 0
+							stderr := ""
+							if te, ok := runErr.(interface{ ExitInfo() (int, string) }); ok {
+								exitCode, stderr = te.ExitInfo()
+							}
+							kind := retry.Classify(runErr, exitCode, stderr)
+							return res, runErr, kind
+						}
+						return res, nil, retry.Retriable
+					})
+					if err != nil {
+						d.MarkFailed(n.ID, err.Error())
+						return
+					}
+					d.MarkCompleted(n.ID, result)
+				} else {
+					result, err := p.runner.RunTask(ctx, n.Task)
+					if err != nil {
+						d.MarkFailed(n.ID, err.Error())
+						return
+					}
+					d.MarkCompleted(n.ID, result)
 				}
-				d.MarkCompleted(n.ID, result)
 			}(node)
 		}
 
