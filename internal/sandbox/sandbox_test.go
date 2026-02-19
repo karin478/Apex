@@ -119,3 +119,22 @@ func TestDockerBackendDefaults(t *testing.T) {
 	assert.Contains(t, joined, "--memory=2g")   // default mem
 	assert.Contains(t, joined, "--cpus=2")      // default cpu
 }
+
+func TestDetect(t *testing.T) {
+	sb := Detect()
+	assert.NotNil(t, sb)
+	// Must return at least Ulimit (since ulimit is always available)
+	assert.True(t, sb.Level() >= Ulimit)
+}
+
+func TestForLevelNone(t *testing.T) {
+	sb, err := ForLevel(None)
+	assert.NoError(t, err)
+	assert.Equal(t, None, sb.Level())
+}
+
+func TestForLevelUlimit(t *testing.T) {
+	sb, err := ForLevel(Ulimit)
+	assert.NoError(t, err)
+	assert.Equal(t, Ulimit, sb.Level())
+}

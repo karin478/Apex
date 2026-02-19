@@ -3,7 +3,9 @@ package sandbox
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
+	"time"
 )
 
 // Level represents sandbox isolation strength (higher = stronger).
@@ -46,4 +48,36 @@ func ParseLevel(s string) (Level, error) {
 type Sandbox interface {
 	Level() Level
 	Wrap(ctx context.Context, binary string, args []string) (string, []string, error)
+}
+
+// Detect returns the strongest available sandbox backend.
+// Checks Docker first (< 50ms timeout), falls back to Ulimit, then None.
+func Detect() Sandbox {
+	if dockerAvailable() {
+		return &DockerSandbox{}
+	}
+	return &UlimitSandbox{}
+}
+
+// ForLevel returns a sandbox for a specific level.
+func ForLevel(level Level) (Sandbox, error) {
+	switch level {
+	case Docker:
+		if !dockerAvailable() {
+			return nil, fmt.Errorf("docker is not available")
+		}
+		return &DockerSandbox{}, nil
+	case Ulimit:
+		return &UlimitSandbox{}, nil
+	case None:
+		return &NoneSandbox{}, nil
+	default:
+		return nil, fmt.Errorf("unknown level: %d", level)
+	}
+}
+
+func dockerAvailable() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	return exec.CommandContext(ctx, "docker", "info").Run() == nil
 }
