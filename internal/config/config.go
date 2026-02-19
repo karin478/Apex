@@ -47,6 +47,16 @@ type RetryConfig struct {
 	MaxDelaySeconds  int     `yaml:"max_delay_seconds"`
 }
 
+type SandboxConfig struct {
+	Level         string   `yaml:"level"`            // "auto", "docker", "ulimit", "none"
+	RequireFor    []string `yaml:"require_for"`      // risk levels requiring sandbox, e.g. ["HIGH","CRITICAL"]
+	DockerImage   string   `yaml:"docker_image"`
+	MemoryLimit   string   `yaml:"memory_limit"`
+	CPULimit      string   `yaml:"cpu_limit"`
+	MaxFileSizeMB int      `yaml:"max_file_size_mb"`
+	MaxCPUSeconds int      `yaml:"max_cpu_seconds"`
+}
+
 type Config struct {
 	Claude     ClaudeConfig     `yaml:"claude"`
 	Governance GovernanceConfig `yaml:"governance"`
@@ -55,6 +65,7 @@ type Config struct {
 	Embedding  EmbeddingConfig  `yaml:"embedding"`
 	Context    ContextConfig    `yaml:"context"`
 	Retry      RetryConfig      `yaml:"retry"`
+	Sandbox    SandboxConfig    `yaml:"sandbox"`
 	BaseDir    string           `yaml:"-"`
 }
 
@@ -92,6 +103,14 @@ func Default() *Config {
 			InitDelaySeconds: 2,
 			Multiplier:       2.0,
 			MaxDelaySeconds:  30,
+		},
+		Sandbox: SandboxConfig{
+			Level:         "auto",
+			DockerImage:   "ubuntu:22.04",
+			MemoryLimit:   "2g",
+			CPULimit:      "2",
+			MaxFileSizeMB: 100,
+			MaxCPUSeconds: 300,
 		},
 		BaseDir: filepath.Join(home, ".apex"),
 	}
@@ -157,6 +176,24 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Retry.MaxDelaySeconds == 0 {
 		cfg.Retry.MaxDelaySeconds = 30
+	}
+	if cfg.Sandbox.Level == "" {
+		cfg.Sandbox.Level = "auto"
+	}
+	if cfg.Sandbox.DockerImage == "" {
+		cfg.Sandbox.DockerImage = "ubuntu:22.04"
+	}
+	if cfg.Sandbox.MemoryLimit == "" {
+		cfg.Sandbox.MemoryLimit = "2g"
+	}
+	if cfg.Sandbox.CPULimit == "" {
+		cfg.Sandbox.CPULimit = "2"
+	}
+	if cfg.Sandbox.MaxFileSizeMB == 0 {
+		cfg.Sandbox.MaxFileSizeMB = 100
+	}
+	if cfg.Sandbox.MaxCPUSeconds == 0 {
+		cfg.Sandbox.MaxCPUSeconds = 300
 	}
 	if cfg.BaseDir == "" {
 		home, _ := os.UserHomeDir()

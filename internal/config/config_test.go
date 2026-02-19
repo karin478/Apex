@@ -167,3 +167,13 @@ func TestEnsureDirs(t *testing.T) {
 	assert.DirExists(t, filepath.Join(dir, "memory", "sessions"))
 	assert.DirExists(t, filepath.Join(dir, "audit"))
 }
+
+func TestDefaultSandboxConfig(t *testing.T) {
+	cfg := Default()
+	assert.Equal(t, "auto", cfg.Sandbox.Level)
+	assert.Equal(t, "ubuntu:22.04", cfg.Sandbox.DockerImage)
+	assert.Equal(t, "2g", cfg.Sandbox.MemoryLimit)
+	assert.Equal(t, "2", cfg.Sandbox.CPULimit)
+	assert.Equal(t, 100, cfg.Sandbox.MaxFileSizeMB)
+	assert.Equal(t, 300, cfg.Sandbox.MaxCPUSeconds)
+}
