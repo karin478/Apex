@@ -56,3 +56,30 @@ func TestLoadReviewNotFound(t *testing.T) {
 	_, err := LoadReview(dir, "nonexistent")
 	assert.Error(t, err)
 }
+
+func TestParseVerdictCleanJSON(t *testing.T) {
+	input := `{"decision":"approve","summary":"Good idea","risks":["risk1"],"suggested_actions":["action1"]}`
+	v, err := parseVerdict(input)
+	require.NoError(t, err)
+	assert.Equal(t, "approve", v.Decision)
+	assert.Equal(t, "Good idea", v.Summary)
+	assert.Equal(t, []string{"risk1"}, v.Risks)
+	assert.Equal(t, []string{"action1"}, v.Actions)
+}
+
+func TestParseVerdictMarkdownWrapped(t *testing.T) {
+	input := "Here is my verdict:\n```json\n{\"decision\":\"reject\",\"summary\":\"Too risky\",\"risks\":[\"r1\",\"r2\"],\"suggested_actions\":[\"a1\"]}\n```\nEnd of review."
+	v, err := parseVerdict(input)
+	require.NoError(t, err)
+	assert.Equal(t, "reject", v.Decision)
+	assert.Equal(t, []string{"r1", "r2"}, v.Risks)
+}
+
+func TestParseVerdictMalformed(t *testing.T) {
+	input := "I think this is a good idea but I can't decide."
+	v, err := parseVerdict(input)
+	require.NoError(t, err)
+	// Fallback: decision="revise", summary=full text
+	assert.Equal(t, "revise", v.Decision)
+	assert.Contains(t, v.Summary, "good idea")
+}

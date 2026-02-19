@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 type Step struct {
@@ -56,4 +58,28 @@ func LoadReview(dir, id string) (*ReviewResult, error) {
 		return nil, fmt.Errorf("parse review %s: %w", id, err)
 	}
 	return &result, nil
+}
+
+var jsonBlockRe = regexp.MustCompile("(?s)```(?:json)?\\s*\\n(\\{.*?\\})\\s*\\n```")
+
+func parseVerdict(output string) (Verdict, error) {
+	var v Verdict
+
+	// Try direct JSON parse
+	if err := json.Unmarshal([]byte(strings.TrimSpace(output)), &v); err == nil && v.Decision != "" {
+		return v, nil
+	}
+
+	// Try extracting from markdown code block
+	if matches := jsonBlockRe.FindStringSubmatch(output); len(matches) > 1 {
+		if err := json.Unmarshal([]byte(matches[1]), &v); err == nil && v.Decision != "" {
+			return v, nil
+		}
+	}
+
+	// Fallback: use full output as summary
+	return Verdict{
+		Decision: "revise",
+		Summary:  strings.TrimSpace(output),
+	}, nil
 }
