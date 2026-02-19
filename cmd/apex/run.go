@@ -19,6 +19,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/memory"
 	"github.com/lyndonlyu/apex/internal/planner"
 	"github.com/lyndonlyu/apex/internal/pool"
+	"github.com/lyndonlyu/apex/internal/snapshot"
 	"github.com/spf13/cobra"
 )
 
@@ -112,6 +113,18 @@ func runTask(cmd *cobra.Command, args []string) error {
 		d.Nodes[id].Task = enriched
 	}
 
+	runID := uuid.New().String()
+
+	// Create snapshot before execution
+	cwd, _ := os.Getwd()
+	snapMgr := snapshot.New(cwd)
+	snap, snapErr := snapMgr.Create(runID)
+	if snapErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: snapshot creation failed: %v\n", snapErr)
+	} else if snap != nil {
+		fmt.Printf("Snapshot saved (%s)\n", snap.Message)
+	}
+
 	// Execute DAG
 	exec := executor.New(executor.Options{
 		Model:   cfg.Claude.Model,
@@ -192,6 +205,17 @@ func runTask(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Handle snapshot based on outcome
+	if snap != nil {
+		if outcome == "success" {
+			if dropErr := snapMgr.Drop(runID); dropErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: snapshot cleanup failed: %v\n", dropErr)
+			}
+		} else {
+			fmt.Printf("\nSnapshot available. Restore with: apex snapshot restore %s\n", runID)
+		}
+	}
+
 	var nodeResults []manifest.NodeResult
 	for _, n := range d.Nodes {
 		nr := manifest.NodeResult{
@@ -206,7 +230,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 
 	runManifest := &manifest.Manifest{
-		RunID:      uuid.New().String(),
+		RunID:      runID,
 		Task:       task,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
 		Model:      cfg.Claude.Model,
