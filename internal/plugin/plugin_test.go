@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,4 +53,71 @@ func TestLoadPluginInvalidYAML(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "plugin.yaml"), []byte("not: [valid: yaml"), 0644)
 	_, err := LoadPlugin(dir)
 	assert.Error(t, err)
+}
+
+func writePluginYAML(t *testing.T, dir, name, version, ptype string, enabled bool) {
+	t.Helper()
+	pluginDir := filepath.Join(dir, name)
+	os.MkdirAll(pluginDir, 0755)
+	yaml := fmt.Sprintf(`name: %s
+version: "%s"
+type: %s
+description: "Test plugin %s"
+author: test
+checksum: ""
+enabled: %t
+`, name, version, ptype, name, enabled)
+	os.WriteFile(filepath.Join(pluginDir, "plugin.yaml"), []byte(yaml), 0644)
+}
+
+func TestRegistryScan(t *testing.T) {
+	dir := t.TempDir()
+	writePluginYAML(t, dir, "plugin-a", "1.0.0", "reasoning", true)
+	writePluginYAML(t, dir, "plugin-b", "0.2.0", "reasoning", false)
+
+	reg := NewRegistry(dir)
+	plugins, err := reg.Scan()
+	require.NoError(t, err)
+	assert.Len(t, plugins, 2)
+}
+
+func TestRegistryScanEmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	reg := NewRegistry(dir)
+	plugins, err := reg.Scan()
+	require.NoError(t, err)
+	assert.Empty(t, plugins)
+}
+
+func TestRegistryScanNonexistentDir(t *testing.T) {
+	reg := NewRegistry("/nonexistent/path")
+	plugins, err := reg.Scan()
+	require.NoError(t, err)
+	assert.Empty(t, plugins)
+}
+
+func TestRegistryList(t *testing.T) {
+	dir := t.TempDir()
+	writePluginYAML(t, dir, "plugin-a", "1.0.0", "reasoning", true)
+
+	reg := NewRegistry(dir)
+	reg.Scan()
+	list := reg.List()
+	assert.Len(t, list, 1)
+	assert.Equal(t, "plugin-a", list[0].Name)
+}
+
+func TestRegistryGet(t *testing.T) {
+	dir := t.TempDir()
+	writePluginYAML(t, dir, "plugin-a", "1.0.0", "reasoning", true)
+
+	reg := NewRegistry(dir)
+	reg.Scan()
+
+	p, ok := reg.Get("plugin-a")
+	assert.True(t, ok)
+	assert.Equal(t, "plugin-a", p.Name)
+
+	_, ok = reg.Get("nonexistent")
+	assert.False(t, ok)
 }
