@@ -75,6 +75,19 @@ func TestReviewRejectMidway(t *testing.T) {
 	assert.Equal(t, Rejected, result.Nodes[2].Decision)
 }
 
+func TestSkipAllNodes(t *testing.T) {
+	// r to review, skip all 3 nodes — should be Approved (not rejected)
+	in := strings.NewReader("r\ns\ns\ns\n")
+	out := &bytes.Buffer{}
+	r := NewReviewer(in, out)
+	result, err := r.Review(makeNodes(), classifyFunc)
+	require.NoError(t, err)
+	assert.True(t, result.Approved) // skip-all is not rejection
+	for _, nd := range result.Nodes {
+		assert.Equal(t, Skipped, nd.Decision)
+	}
+}
+
 func TestEmptyNodeList(t *testing.T) {
 	in := strings.NewReader("")
 	out := &bytes.Buffer{}

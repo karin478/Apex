@@ -105,7 +105,6 @@ func (r *Reviewer) rejectAll(nodes []*dag.Node) *Result {
 
 func (r *Reviewer) reviewOneByOne(nodes []*dag.Node, classify func(string) governance.RiskLevel) *Result {
 	decisions := make([]NodeDecision, len(nodes))
-	anyApproved := false
 
 	for i, n := range nodes {
 		risk := classify(n.Task)
@@ -117,7 +116,6 @@ func (r *Reviewer) reviewOneByOne(nodes []*dag.Node, classify func(string) gover
 		switch choice {
 		case "a":
 			decisions[i] = NodeDecision{NodeID: n.ID, Decision: Approved}
-			anyApproved = true
 		case "s":
 			decisions[i] = NodeDecision{NodeID: n.ID, Decision: Skipped}
 		default: // "r" or anything else = reject all remaining
@@ -129,5 +127,7 @@ func (r *Reviewer) reviewOneByOne(nodes []*dag.Node, classify func(string) gover
 		}
 	}
 
-	return &Result{Approved: anyApproved, Nodes: decisions}
+	// If we reached here, no node was rejected (all approved or skipped).
+	// Return Approved: true so the caller can handle skipped nodes separately.
+	return &Result{Approved: true, Nodes: decisions}
 }
