@@ -25,8 +25,9 @@
 | 10 | Fault Tolerance & Retry | `phase10-fault-tolerance-design.md` | Done |
 | E2E | E2E Testing Module | `e2e-testing-design.md` | Done |
 | 11 | Execution Sandbox | `2026-02-19-phase11-execution-sandbox-design.md` | Done |
+| 12 | Daily Anchor | `2026-02-19-phase12-daily-anchor-design.md` | Done |
 
-## Current: Phase 12 — TBD
+## Current: Phase 13 — TBD
 
 No phase in progress.
 
@@ -35,7 +36,7 @@ No phase in progress.
 | Suite | Command | Coverage |
 |-------|---------|----------|
 | Unit tests | `make test` | 21 packages |
-| E2E tests (mock) | `make e2e` | 29 tests, all CLI commands |
+| E2E tests (mock) | `make e2e` | 33 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -50,7 +51,7 @@ No phase in progress.
 | `internal/vectordb` | Local vector similarity search |
 | `internal/context` | Context builder + token compression |
 | `internal/search` | Semantic search engine |
-| `internal/audit` | Structured audit logging |
+| `internal/audit` | Structured audit logging + daily anchor verification |
 | `internal/manifest` | Execution manifest tracking |
 | `internal/killswitch` | Emergency stop via file signal |
 | `internal/snapshot` | Git-stash-based rollback |
