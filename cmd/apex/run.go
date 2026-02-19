@@ -87,6 +87,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 		Model:   cfg.Planner.Model,
 		Effort:  "high",
 		Timeout: time.Duration(cfg.Planner.Timeout) * time.Second,
+		Binary:  cfg.Claude.Binary,
 	})
 
 	fmt.Println("Planning task...")
@@ -187,6 +188,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 		Model:   cfg.Claude.Model,
 		Effort:  cfg.Claude.Effort,
 		Timeout: time.Duration(cfg.Claude.Timeout) * time.Second,
+		Binary:  cfg.Claude.Binary,
 	})
 
 	runner := pool.NewClaudeRunner(exec)

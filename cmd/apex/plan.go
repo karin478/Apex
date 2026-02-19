@@ -38,6 +38,7 @@ func planTask(cmd *cobra.Command, args []string) error {
 		Model:   cfg.Planner.Model,
 		Effort:  "high",
 		Timeout: time.Duration(cfg.Planner.Timeout) * time.Second,
+		Binary:  cfg.Claude.Binary,
 	})
 
 	fmt.Println("Analyzing task...")
