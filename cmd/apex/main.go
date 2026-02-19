@@ -33,6 +33,7 @@ func init() {
 	rootCmd.AddCommand(resumeCmd)
 	rootCmd.AddCommand(snapshotCmd)
 	rootCmd.AddCommand(reviewCmd)
+	rootCmd.AddCommand(pluginCmd)
 }
 
 func main() {

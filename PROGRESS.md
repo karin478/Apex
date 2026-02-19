@@ -27,8 +27,9 @@
 | 11 | Execution Sandbox | `2026-02-19-phase11-execution-sandbox-design.md` | Done |
 | 12 | Daily Anchor | `2026-02-19-phase12-daily-anchor-design.md` | Done |
 | 13 | Adversarial Review | `2026-02-19-phase13-adversarial-review-design.md` | Done |
+| 14 | Plugin System | `2026-02-19-phase14-plugin-system-design.md` | Done |
 
-## Current: Phase 14 — TBD
+## Current: Phase 15 — TBD
 
 No phase in progress.
 
@@ -36,8 +37,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 22 packages |
-| E2E tests (mock) | `make e2e` | 36 tests, all CLI commands |
+| Unit tests | `make test` | 24 packages |
+| E2E tests (mock) | `make e2e` | 41 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -63,4 +64,5 @@ No phase in progress.
 | `internal/config` | YAML config loader |
 | `internal/memory` | File-based memory store |
 | `internal/sandbox` | Multi-level execution sandboxing (Docker/Ulimit/None) |
-| `internal/reasoning` | Adversarial review debate protocol |
+| `internal/reasoning` | Adversarial review debate protocol + protocol registry |
+| `internal/plugin` | Plugin management framework with directory scanning + SHA-256 verification |
