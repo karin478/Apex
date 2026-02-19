@@ -109,13 +109,22 @@ func runReview(cmd *cobra.Command, args []string) error {
 		if len(truncated) > 80 {
 			truncated = truncated[:80]
 		}
+		// Map verdict decision to audit outcome (history.go expects "rejected")
+		outcome := result.Verdict.Decision
+		if outcome == "reject" {
+			outcome = "rejected"
+		}
 		logger.Log(audit.Entry{
 			Task:      "review: " + truncated,
 			RiskLevel: "LOW",
-			Outcome:   result.Verdict.Decision,
+			Outcome:   outcome,
 			Duration:  totalDur,
 			Model:     cfg.Claude.Model,
 		})
+
+		// Refresh daily anchor after audit entry
+		cwd, _ := os.Getwd()
+		audit.MaybeCreateAnchor(logger, cwd)
 	}
 
 	return nil
