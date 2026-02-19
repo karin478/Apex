@@ -50,12 +50,11 @@ type Sandbox interface {
 	Wrap(ctx context.Context, binary string, args []string) (string, []string, error)
 }
 
-// Detect returns the strongest available sandbox backend.
-// Checks Docker first (< 50ms timeout), falls back to Ulimit, then None.
+// Detect returns the best practical sandbox backend for auto mode.
+// Returns Ulimit (always available on Unix) since Docker requires a custom
+// image with the claude binary installed — auto mode should not assume that.
+// Use ForLevel(Docker) explicitly when a suitable image is configured.
 func Detect() Sandbox {
-	if dockerAvailable() {
-		return &DockerSandbox{}
-	}
 	return &UlimitSandbox{}
 }
 
@@ -77,7 +76,7 @@ func ForLevel(level Level) (Sandbox, error) {
 }
 
 func dockerAvailable() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	return exec.CommandContext(ctx, "docker", "info").Run() == nil
 }

@@ -36,8 +36,8 @@ func (u *UlimitSandbox) Wrap(_ context.Context, binary string, args []string) (s
 		quoted[i] = shellQuote(a)
 	}
 
-	cmd := fmt.Sprintf("ulimit -v %d -t %d -f %d; exec %s %s",
-		mem, cpu, fileBlocks, shellQuote(binary), strings.Join(quoted, " "))
+	cmd := fmt.Sprintf("set -e; ulimit -t %d -f %d && exec %s %s",
+		cpu, fileBlocks, shellQuote(binary), strings.Join(quoted, " "))
 
 	return "sh", []string{"-c", cmd}, nil
 }

@@ -64,13 +64,13 @@ func TestUlimitBackend(t *testing.T) {
 	bin, args, err := sb.Wrap(context.Background(), "claude", []string{"-p", "hello"})
 	assert.NoError(t, err)
 	assert.Equal(t, "sh", bin)
-	// The args should be: ["-c", "ulimit -v 2097152 -t 300 -f 204800; exec claude -p hello"]
+	// The args should be: ["-c", "set -e; ulimit -t 300 -f 204800 && exec claude -p hello"]
 	assert.Len(t, args, 2)
 	assert.Equal(t, "-c", args[0])
+	assert.Contains(t, args[1], "set -e")
 	assert.Contains(t, args[1], "ulimit")
-	assert.Contains(t, args[1], "-v 2097152")
 	assert.Contains(t, args[1], "-t 300")
-	assert.Contains(t, args[1], "exec claude -p hello")
+	assert.Contains(t, args[1], "&& exec claude -p hello")
 }
 
 func TestUlimitDefaults(t *testing.T) {
@@ -123,8 +123,8 @@ func TestDockerBackendDefaults(t *testing.T) {
 func TestDetect(t *testing.T) {
 	sb := Detect()
 	assert.NotNil(t, sb)
-	// Must return at least Ulimit (since ulimit is always available)
-	assert.True(t, sb.Level() >= Ulimit)
+	// Auto mode always returns Ulimit (Docker requires explicit config)
+	assert.Equal(t, Ulimit, sb.Level())
 }
 
 func TestForLevelNone(t *testing.T) {
