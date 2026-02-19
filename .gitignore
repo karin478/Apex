@@ -1,4 +1,5 @@
 bin/
+apex
 coverage.out
 *.exe
 .env
