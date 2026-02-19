@@ -122,6 +122,11 @@ func runTask(cmd *cobra.Command, args []string) error {
 	runner := pool.NewClaudeRunner(exec)
 	p := pool.New(cfg.Pool.MaxConcurrent, runner)
 
+	// Second kill switch check right before execution
+	if ks.IsActive() {
+		return fmt.Errorf("kill switch activated during planning — use 'apex resume' to deactivate")
+	}
+
 	killCtx, killCancel := ks.Watch(context.Background())
 	defer killCancel()
 
@@ -130,8 +135,8 @@ func runTask(cmd *cobra.Command, args []string) error {
 	execErr := p.Execute(killCtx, d)
 	duration := time.Since(start)
 
-	// Detect kill switch interruption
-	killedBySwitch := ks.IsActive() && killCtx.Err() != nil
+	// Detect kill switch interruption (reliable: doesn't depend on file still existing)
+	killedBySwitch := ks.WasTriggered()
 
 	// Restore original task names for display/audit
 	for id, orig := range origTasks {
@@ -157,6 +162,9 @@ func runTask(cmd *cobra.Command, args []string) error {
 			if n.Status == dag.Failed {
 				nodeOutcome = "failure"
 				nodeErr = n.Error
+			} else if killedBySwitch && (n.Status == dag.Pending || n.Status == dag.Running) {
+				nodeOutcome = "interrupted"
+				nodeErr = "kill switch activated"
 			}
 			logger.Log(audit.Entry{
 				Task:      fmt.Sprintf("[%s] %s", n.ID, n.Task),
