@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/lyndonlyu/apex/internal/health"
 	"github.com/lyndonlyu/apex/internal/manifest"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +27,11 @@ func showStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--last must be at least 1, got %d", statusLast)
 	}
 	home, _ := os.UserHomeDir()
-	runsDir := filepath.Join(home, ".apex", "runs")
+	baseDir := filepath.Join(home, ".apex")
+	report := health.Evaluate(baseDir)
+	fmt.Printf("System Health: %s\n\n", report.Level)
+
+	runsDir := filepath.Join(baseDir, "runs")
 	store := manifest.NewStore(runsDir)
 
 	recent, err := store.Recent(statusLast)
