@@ -14,6 +14,7 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
+	"github.com/lyndonlyu/apex/internal/redact"
 )
 
 // dateFileRe matches audit log files named YYYY-MM-DD.jsonl
@@ -62,6 +63,7 @@ type Record struct {
 type Logger struct {
 	dir      string
 	lastHash string
+	redactor *redact.Redactor
 }
 
 func NewLogger(dir string) (*Logger, error) {
@@ -98,6 +100,10 @@ func (l *Logger) initLastHash() {
 	l.lastHash = r.Hash
 }
 
+func (l *Logger) SetRedactor(r *redact.Redactor) {
+	l.redactor = r
+}
+
 func computeHash(r Record) string {
 	saved := r.Hash
 	r.Hash = ""
@@ -119,6 +125,11 @@ func (l *Logger) Log(entry Entry) error {
 		Error:        entry.Error,
 		SandboxLevel: entry.SandboxLevel,
 		PrevHash:     l.lastHash,
+	}
+	// Redact sensitive data before hashing
+	if l.redactor != nil {
+		record.Task = l.redactor.Redact(record.Task)
+		record.Error = l.redactor.Redact(record.Error)
 	}
 	record.Hash = computeHash(record)
 

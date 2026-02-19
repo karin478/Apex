@@ -177,3 +177,29 @@ func TestDefaultSandboxConfig(t *testing.T) {
 	assert.Equal(t, 100, cfg.Sandbox.MaxFileSizeMB)
 	assert.Equal(t, 300, cfg.Sandbox.MaxCPUSeconds)
 }
+
+func TestDefaultRedactionConfig(t *testing.T) {
+	cfg := Default()
+	assert.True(t, cfg.Redaction.Enabled)
+	assert.Equal(t, "private_only", cfg.Redaction.RedactIPs)
+	assert.Equal(t, "[REDACTED]", cfg.Redaction.Placeholder)
+}
+
+func TestLoadRedactionConfig(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	content := []byte(`redaction:
+  enabled: false
+  redact_ips: all
+  placeholder: "***"
+  custom_patterns:
+    - "secret-\\d+"
+`)
+	require.NoError(t, os.WriteFile(configPath, content, 0644))
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	assert.False(t, cfg.Redaction.Enabled)
+	assert.Equal(t, "all", cfg.Redaction.RedactIPs)
+	assert.Equal(t, "***", cfg.Redaction.Placeholder)
+	assert.Equal(t, []string{"secret-\\d+"}, cfg.Redaction.CustomPatterns)
+}

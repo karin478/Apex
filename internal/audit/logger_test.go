@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyndonlyu/apex/internal/redact"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -268,4 +269,115 @@ func TestLastHashForDate(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, hash)
 	assert.Equal(t, 0, count)
+}
+
+func TestLogRedactsSecretInTask(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	r := redact.New(redact.RedactionConfig{
+		Enabled:   true,
+		RedactIPs: "none",
+	})
+	logger.SetRedactor(r)
+
+	err = logger.Log(Entry{
+		Task:      "deploy with sk-abcdefghijklmnopqrstuvwxyz",
+		RiskLevel: "LOW",
+		Outcome:   "success",
+		Duration:  time.Second,
+		Model:     "test",
+	})
+	require.NoError(t, err)
+
+	records, err := logger.Recent(1)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+
+	assert.NotContains(t, records[0].Task, "sk-abcdefghijklmnopqrstuvwxyz")
+	assert.Contains(t, records[0].Task, "[REDACTED]")
+}
+
+func TestLogRedactsSecretInError(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	r := redact.New(redact.RedactionConfig{
+		Enabled:   true,
+		RedactIPs: "none",
+	})
+	logger.SetRedactor(r)
+
+	err = logger.Log(Entry{
+		Task:      "some task",
+		RiskLevel: "HIGH",
+		Outcome:   "failure",
+		Duration:  time.Second,
+		Model:     "test",
+		Error:     "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig",
+	})
+	require.NoError(t, err)
+
+	records, err := logger.Recent(1)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+
+	assert.NotContains(t, records[0].Error, "eyJhbGciOiJIUzI1NiJ9.payload.sig")
+	assert.Contains(t, records[0].Error, "[REDACTED]")
+}
+
+func TestLogHashCoversRedactedContent(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	r := redact.New(redact.RedactionConfig{
+		Enabled:   true,
+		RedactIPs: "none",
+	})
+	logger.SetRedactor(r)
+
+	err = logger.Log(Entry{
+		Task:      "deploy with sk-abcdefghijklmnopqrstuvwxyz",
+		RiskLevel: "LOW",
+		Outcome:   "success",
+		Duration:  time.Second,
+		Model:     "test",
+	})
+	require.NoError(t, err)
+
+	records, err := logger.Recent(1)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+
+	// Recompute hash from the stored (redacted) record — it should match
+	recomputed := computeHash(records[0])
+	assert.Equal(t, recomputed, records[0].Hash, "hash must cover redacted content, not original")
+}
+
+func TestLogNoRedactorPassthrough(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	// Do NOT call SetRedactor — leave redactor nil
+
+	secret := "deploy with sk-abcdefghijklmnopqrstuvwxyz"
+	err = logger.Log(Entry{
+		Task:      secret,
+		RiskLevel: "LOW",
+		Outcome:   "success",
+		Duration:  time.Second,
+		Model:     "test",
+	})
+	require.NoError(t, err)
+
+	records, err := logger.Recent(1)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+
+	// Secret should appear unchanged — backward compatibility
+	assert.Equal(t, secret, records[0].Task)
 }

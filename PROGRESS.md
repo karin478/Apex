@@ -28,8 +28,9 @@
 | 12 | Daily Anchor | `2026-02-19-phase12-daily-anchor-design.md` | Done |
 | 13 | Adversarial Review | `2026-02-19-phase13-adversarial-review-design.md` | Done |
 | 14 | Plugin System | `2026-02-19-phase14-plugin-system-design.md` | Done |
+| 15 | Redaction Pipeline | `2026-02-19-phase15-redaction-pipeline-design.md` | Done |
 
-## Current: Phase 15 — TBD
+## Current: Phase 16 — TBD
 
 No phase in progress.
 
@@ -37,8 +38,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 24 packages |
-| E2E tests (mock) | `make e2e` | 41 tests, all CLI commands |
+| Unit tests | `make test` | 25 packages |
+| E2E tests (mock) | `make e2e` | 44 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -66,3 +67,4 @@ No phase in progress.
 | `internal/sandbox` | Multi-level execution sandboxing (Docker/Ulimit/None) |
 | `internal/reasoning` | Adversarial review debate protocol + protocol registry |
 | `internal/plugin` | Plugin management framework with directory scanning + SHA-256 verification |
+| `internal/redact` | Redaction pipeline with built-in secret patterns + IP filtering |

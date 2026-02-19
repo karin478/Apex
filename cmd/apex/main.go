@@ -34,6 +34,7 @@ func init() {
 	rootCmd.AddCommand(snapshotCmd)
 	rootCmd.AddCommand(reviewCmd)
 	rootCmd.AddCommand(pluginCmd)
+	rootCmd.AddCommand(redactCmd)
 }
 
 func main() {

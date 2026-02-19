@@ -22,6 +22,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/memory"
 	"github.com/lyndonlyu/apex/internal/planner"
 	"github.com/lyndonlyu/apex/internal/pool"
+	"github.com/lyndonlyu/apex/internal/redact"
 	"github.com/lyndonlyu/apex/internal/retry"
 	"github.com/lyndonlyu/apex/internal/sandbox"
 	"github.com/lyndonlyu/apex/internal/snapshot"
@@ -295,6 +296,9 @@ func runTask(cmd *cobra.Command, args []string) error {
 	logger, auditInitErr := audit.NewLogger(auditDir)
 	if auditInitErr != nil {
 		fmt.Fprintf(os.Stderr, "warning: audit init failed: %v\n", auditInitErr)
+	}
+	if logger != nil {
+		logger.SetRedactor(redact.New(cfg.Redaction))
 	}
 
 	// Log each node
