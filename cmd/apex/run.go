@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lyndonlyu/apex/internal/approval"
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/lyndonlyu/apex/internal/config"
 	apexctx "github.com/lyndonlyu/apex/internal/context"
@@ -92,6 +93,30 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Plan: %d steps\n", len(d.Nodes))
+
+	// Approval gate for HIGH risk tasks
+	if risk.ShouldRequireApproval() {
+		reviewer := approval.NewReviewer(os.Stdin, os.Stdout)
+		result, reviewErr := reviewer.Review(d.NodeSlice(), governance.Classify)
+		if reviewErr != nil {
+			return fmt.Errorf("approval review failed: %w", reviewErr)
+		}
+		if !result.Approved {
+			fmt.Println("Approval rejected. Aborting.")
+			return nil
+		}
+		// Remove skipped nodes
+		for _, nd := range result.Nodes {
+			if nd.Decision == approval.Skipped {
+				d.RemoveNode(nd.NodeID)
+			}
+		}
+		if len(d.Nodes) == 0 {
+			fmt.Println("All nodes skipped. Nothing to execute.")
+			return nil
+		}
+		fmt.Printf("Approved: %d steps to execute\n", len(d.Nodes))
+	}
 
 	// Build enriched prompts for each DAG node (keep original Task for display/audit)
 	ctxBuilder := apexctx.NewBuilder(apexctx.Options{
