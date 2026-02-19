@@ -2,7 +2,10 @@ package retry
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"strings"
+	"time"
 )
 
 // ErrorKind classifies an error for retry decisions.
@@ -72,4 +75,63 @@ func Classify(err error, exitCode int, stderr string) ErrorKind {
 	}
 
 	return Unknown
+}
+
+// Policy defines retry behavior with exponential backoff.
+type Policy struct {
+	MaxAttempts int
+	InitDelay   time.Duration
+	Multiplier  float64
+	MaxDelay    time.Duration
+}
+
+// DefaultPolicy returns sensible retry defaults.
+func DefaultPolicy() Policy {
+	return Policy{
+		MaxAttempts: 3,
+		InitDelay:   2 * time.Second,
+		Multiplier:  2.0,
+		MaxDelay:    30 * time.Second,
+	}
+}
+
+// delay calculates the backoff duration for a given attempt (0-indexed).
+func (p Policy) delay(attempt int) time.Duration {
+	d := time.Duration(float64(p.InitDelay) * math.Pow(p.Multiplier, float64(attempt)))
+	if d > p.MaxDelay {
+		d = p.MaxDelay
+	}
+	return d
+}
+
+// Execute runs fn up to MaxAttempts times. If fn returns a nil error, the result
+// is returned immediately. If the ErrorKind is NonRetriable, the error is returned
+// without further attempts. For Retriable/Unknown, it waits with exponential
+// backoff before the next attempt. Respects context cancellation.
+func (p Policy) Execute(ctx context.Context, fn func() (string, error, ErrorKind)) (string, error) {
+	var lastErr error
+	for attempt := 0; attempt < p.MaxAttempts; attempt++ {
+		result, err, kind := fn()
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+
+		if kind == NonRetriable {
+			return "", err
+		}
+
+		// Last attempt — don't sleep, just fail.
+		if attempt == p.MaxAttempts-1 {
+			break
+		}
+
+		wait := p.delay(attempt)
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+	return "", fmt.Errorf("task failed after %d attempts: %w", p.MaxAttempts, lastErr)
 }
