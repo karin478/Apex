@@ -11,6 +11,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/config"
 	"github.com/lyndonlyu/apex/internal/executor"
 	"github.com/lyndonlyu/apex/internal/reasoning"
+	"github.com/lyndonlyu/apex/internal/redact"
 	"github.com/spf13/cobra"
 )
 
@@ -105,6 +106,7 @@ func runReview(cmd *cobra.Command, args []string) error {
 	auditDir := filepath.Join(home, ".apex", "audit")
 	logger, logErr := audit.NewLogger(auditDir)
 	if logErr == nil {
+		logger.SetRedactor(redact.New(cfg.Redaction))
 		truncated := proposal
 		if len(truncated) > 80 {
 			truncated = truncated[:80]

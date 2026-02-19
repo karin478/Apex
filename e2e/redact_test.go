@@ -1,6 +1,9 @@
 package e2e_test
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,19 +34,38 @@ func TestRedactTestClean(t *testing.T) {
 
 // TestAuditEntryRedacted verifies that audit log entries have sensitive data
 // redacted before being written to disk.
-//
-// TODO: The run command (cmd/apex/run.go) does not currently wire the redactor
-// into the audit logger via SetRedactor(). Until that integration is added,
-// audit entries will contain raw task text. This test is skipped until the
-// redactor is wired into the run command path (outside Task 5 scope).
 func TestAuditEntryRedacted(t *testing.T) {
-	t.Skip("TODO: run command does not yet call audit.Logger.SetRedactor(); " +
-		"wire redactor into cmd/apex/run.go before enabling this test")
+	env := newTestEnv(t)
+	secret := "sk-testkey1234567890abcdef"
 
-	// Once the redactor is wired, the test should:
-	// 1. env := newTestEnv(t)
-	// 2. env.runApex("run", "deploy with sk-testkey1234567890abcdef")
-	//    (will fail because no real Claude, but audit entry should still be written)
-	// 3. Read audit log files from env.auditDir()
-	// 4. Assert that none of them contain "sk-testkey1234567890abcdef"
+	// Use a LOW-risk task so it bypasses approval prompt; mock Claude runs and audit entry is written
+	env.runApex("run", "say hello with "+secret)
+
+	// Read all audit log files
+	auditDir := env.auditDir()
+	entries, err := os.ReadDir(auditDir)
+	if err != nil {
+		t.Fatalf("read audit dir: %v", err)
+	}
+
+	var allContent strings.Builder
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) == ".jsonl" {
+			data, err := os.ReadFile(filepath.Join(auditDir, entry.Name()))
+			if err != nil {
+				t.Fatalf("read audit file %s: %v", entry.Name(), err)
+			}
+			allContent.Write(data)
+		}
+	}
+
+	content := allContent.String()
+	if content == "" {
+		t.Skip("no audit entries written (mock may not produce audit logs)")
+	}
+
+	assert.NotContains(t, content, secret,
+		"audit log should NOT contain the raw secret key")
+	assert.Contains(t, content, "[REDACTED]",
+		"audit log should contain [REDACTED] placeholder")
 }

@@ -21,7 +21,7 @@ var redactTestCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		home, _ := os.UserHomeDir()
-		cfgPath := filepath.Join(home, ".apex", "apex.yaml")
+		cfgPath := filepath.Join(home, ".apex", "config.yaml")
 		cfg, err := config.Load(cfgPath)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
