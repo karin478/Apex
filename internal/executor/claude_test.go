@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyndonlyu/apex/internal/sandbox"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -94,4 +95,24 @@ func TestResultDuration(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.Duration > 0)
 	assert.True(t, result.Duration < 5*time.Second)
+}
+
+func TestExecuteWithSandbox(t *testing.T) {
+	sb := &sandbox.UlimitSandbox{
+		MaxMemoryKB:   2097152,
+		MaxCPUSec:     300,
+		MaxFileSizeMB: 100,
+	}
+	exec := New(Options{
+		Model:   "claude-opus-4-6",
+		Effort:  "high",
+		Timeout: 10 * time.Second,
+		Binary:  "echo",
+		Sandbox: sb,
+	})
+
+	result, err := exec.Run(context.Background(), "hello")
+	require.NoError(t, err)
+	// The command ran through sh -c "ulimit ...; exec echo ..."
+	assert.Equal(t, 0, result.ExitCode)
 }

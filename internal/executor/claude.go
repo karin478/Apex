@@ -3,15 +3,19 @@ package executor
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os/exec"
 	"time"
+
+	"github.com/lyndonlyu/apex/internal/sandbox"
 )
 
 type Options struct {
 	Model   string
 	Effort  string
 	Timeout time.Duration
-	Binary  string // defaults to "claude"
+	Binary  string          // defaults to "claude"
+	Sandbox sandbox.Sandbox // optional sandbox wrapper
 }
 
 type Result struct {
@@ -51,8 +55,18 @@ func (e *Executor) Run(ctx context.Context, task string) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, e.opts.Timeout)
 	defer cancel()
 
+	binary := e.opts.Binary
 	args := e.buildArgs(task)
-	cmd := exec.CommandContext(ctx, e.opts.Binary, args...)
+
+	if e.opts.Sandbox != nil {
+		var err error
+		binary, args, err = e.opts.Sandbox.Wrap(ctx, binary, args)
+		if err != nil {
+			return Result{}, fmt.Errorf("sandbox wrap: %w", err)
+		}
+	}
+
+	cmd := exec.CommandContext(ctx, binary, args...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
