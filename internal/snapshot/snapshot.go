@@ -42,6 +42,21 @@ func (m *Manager) Create(runID string) (*Snapshot, error) {
 	return &Snapshot{Index: 0, Message: msg, RunID: runID}, nil
 }
 
+// Apply restores the stashed changes to the working tree without removing the
+// stash entry. Use this right after Create to make the snapshot transparent
+// (working tree keeps its original state, stash serves as a pure backup).
+func (m *Manager) Apply(runID string) error {
+	idx, err := m.findStash(runID)
+	if err != nil {
+		return err
+	}
+	out, err := m.git("stash", "apply", fmt.Sprintf("stash@{%d}", idx))
+	if err != nil {
+		return fmt.Errorf("git stash apply failed: %w: %s", err, out)
+	}
+	return nil
+}
+
 func (m *Manager) Restore(runID string) error {
 	idx, err := m.findStash(runID)
 	if err != nil {

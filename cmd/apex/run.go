@@ -115,16 +115,6 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	runID := uuid.New().String()
 
-	// Create snapshot before execution
-	cwd, _ := os.Getwd()
-	snapMgr := snapshot.New(cwd)
-	snap, snapErr := snapMgr.Create(runID)
-	if snapErr != nil {
-		fmt.Fprintf(os.Stderr, "warning: snapshot creation failed: %v\n", snapErr)
-	} else if snap != nil {
-		fmt.Printf("Snapshot saved (%s)\n", snap.Message)
-	}
-
 	// Execute DAG
 	exec := executor.New(executor.Options{
 		Model:   cfg.Claude.Model,
@@ -138,6 +128,20 @@ func runTask(cmd *cobra.Command, args []string) error {
 	// Second kill switch check right before execution
 	if ks.IsActive() {
 		return fmt.Errorf("kill switch activated during planning — use 'apex resume' to deactivate")
+	}
+
+	// Create snapshot after all pre-checks pass (so early returns don't stash away user edits)
+	cwd, _ := os.Getwd()
+	snapMgr := snapshot.New(cwd)
+	snap, snapErr := snapMgr.Create(runID)
+	if snapErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: snapshot creation failed: %v\n", snapErr)
+	} else if snap != nil {
+		// Restore working tree — snapshot is a transparent backup, not destructive
+		if applyErr := snapMgr.Apply(runID); applyErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: snapshot apply failed: %v\n", applyErr)
+		}
+		fmt.Printf("Snapshot saved (%s)\n", snap.Message)
 	}
 
 	killCtx, killCancel := ks.Watch(context.Background())

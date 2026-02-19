@@ -84,6 +84,32 @@ func TestDropSnapshot(t *testing.T) {
 	assert.Empty(t, snaps)
 }
 
+func TestApplyRestoresWorkingTree(t *testing.T) {
+	dir := initGitRepo(t)
+	m := New(dir)
+
+	os.WriteFile(filepath.Join(dir, "file.txt"), []byte("user-edits"), 0644)
+
+	snap, err := m.Create("test-apply")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// After Create, working tree is clean (stashed away)
+	data, _ := os.ReadFile(filepath.Join(dir, "file.txt"))
+	assert.Equal(t, "original", string(data))
+
+	// Apply restores the working tree without removing the stash
+	err = m.Apply("test-apply")
+	require.NoError(t, err)
+
+	data, _ = os.ReadFile(filepath.Join(dir, "file.txt"))
+	assert.Equal(t, "user-edits", string(data))
+
+	// Stash still exists (Apply doesn't remove it)
+	snaps, _ := m.List()
+	assert.Len(t, snaps, 1)
+}
+
 func TestCreateInNonGitDir(t *testing.T) {
 	dir := t.TempDir()
 	m := New(dir)
