@@ -14,12 +14,13 @@ import (
 )
 
 type Entry struct {
-	Task      string
-	RiskLevel string
-	Outcome   string
-	Duration  time.Duration
-	Model     string
-	Error     string
+	Task         string
+	RiskLevel    string
+	Outcome      string
+	Duration     time.Duration
+	Model        string
+	Error        string
+	SandboxLevel string
 }
 
 type Record struct {
@@ -30,8 +31,9 @@ type Record struct {
 	Outcome    string `json:"outcome"`
 	DurationMs int64  `json:"duration_ms"`
 	Model      string `json:"model"`
-	Error      string `json:"error,omitempty"`
-	PrevHash   string `json:"prev_hash,omitempty"`
+	Error        string `json:"error,omitempty"`
+	SandboxLevel string `json:"sandbox_level,omitempty"`
+	PrevHash     string `json:"prev_hash,omitempty"`
 	Hash       string `json:"hash,omitempty"`
 }
 
@@ -85,15 +87,16 @@ func computeHash(r Record) string {
 
 func (l *Logger) Log(entry Entry) error {
 	record := Record{
-		Timestamp:  time.Now().UTC().Format(time.RFC3339),
-		ActionID:   uuid.New().String(),
-		Task:       entry.Task,
-		RiskLevel:  entry.RiskLevel,
-		Outcome:    entry.Outcome,
-		DurationMs: entry.Duration.Milliseconds(),
-		Model:      entry.Model,
-		Error:      entry.Error,
-		PrevHash:   l.lastHash,
+		Timestamp:    time.Now().UTC().Format(time.RFC3339),
+		ActionID:     uuid.New().String(),
+		Task:         entry.Task,
+		RiskLevel:    entry.RiskLevel,
+		Outcome:      entry.Outcome,
+		DurationMs:   entry.Duration.Milliseconds(),
+		Model:        entry.Model,
+		Error:        entry.Error,
+		SandboxLevel: entry.SandboxLevel,
+		PrevHash:     l.lastHash,
 	}
 	record.Hash = computeHash(record)
 

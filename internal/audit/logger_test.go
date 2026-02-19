@@ -177,6 +177,27 @@ func TestHashChainPersistence(t *testing.T) {
 	assert.True(t, valid)
 }
 
+func TestLogSandboxLevel(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	entry := Entry{
+		Task:         "test task",
+		RiskLevel:    "LOW",
+		Outcome:      "success",
+		Duration:     100 * time.Millisecond,
+		Model:        "test",
+		SandboxLevel: "ulimit",
+	}
+	require.NoError(t, logger.Log(entry))
+
+	records, err := logger.Recent(1)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, "ulimit", records[0].SandboxLevel)
+}
+
 func TestHashChainAcrossDays(t *testing.T) {
 	dir := t.TempDir()
 

@@ -310,12 +310,13 @@ func runTask(cmd *cobra.Command, args []string) error {
 				nodeErr = "kill switch activated"
 			}
 			logger.Log(audit.Entry{
-				Task:      fmt.Sprintf("[%s] %s", n.ID, n.Task),
-				RiskLevel: risk.String(),
-				Outcome:   nodeOutcome,
-				Duration:  duration,
-				Model:     cfg.Claude.Model,
-				Error:     nodeErr,
+				Task:         fmt.Sprintf("[%s] %s", n.ID, n.Task),
+				RiskLevel:    risk.String(),
+				Outcome:      nodeOutcome,
+				Duration:     duration,
+				Model:        cfg.Claude.Model,
+				Error:        nodeErr,
+				SandboxLevel: sb.Level().String(),
 			})
 		}
 	}
