@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/lyndonlyu/apex/internal/redact"
 	"gopkg.in/yaml.v3"
 )
 
@@ -58,15 +59,16 @@ type SandboxConfig struct {
 }
 
 type Config struct {
-	Claude     ClaudeConfig     `yaml:"claude"`
-	Governance GovernanceConfig `yaml:"governance"`
-	Planner    PlannerConfig    `yaml:"planner"`
-	Pool       PoolConfig       `yaml:"pool"`
-	Embedding  EmbeddingConfig  `yaml:"embedding"`
-	Context    ContextConfig    `yaml:"context"`
-	Retry      RetryConfig      `yaml:"retry"`
-	Sandbox    SandboxConfig    `yaml:"sandbox"`
-	BaseDir    string           `yaml:"-"`
+	Claude     ClaudeConfig           `yaml:"claude"`
+	Governance GovernanceConfig       `yaml:"governance"`
+	Planner    PlannerConfig          `yaml:"planner"`
+	Pool       PoolConfig             `yaml:"pool"`
+	Embedding  EmbeddingConfig        `yaml:"embedding"`
+	Context    ContextConfig          `yaml:"context"`
+	Retry      RetryConfig            `yaml:"retry"`
+	Sandbox    SandboxConfig          `yaml:"sandbox"`
+	Redaction  redact.RedactionConfig `yaml:"redaction"`
+	BaseDir    string                 `yaml:"-"`
 }
 
 func Default() *Config {
@@ -111,6 +113,11 @@ func Default() *Config {
 			CPULimit:      "2",
 			MaxFileSizeMB: 100,
 			MaxCPUSeconds: 300,
+		},
+		Redaction: redact.RedactionConfig{
+			Enabled:     true,
+			RedactIPs:   "private_only",
+			Placeholder: "[REDACTED]",
 		},
 		BaseDir: filepath.Join(home, ".apex"),
 	}
@@ -194,6 +201,12 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Sandbox.MaxCPUSeconds == 0 {
 		cfg.Sandbox.MaxCPUSeconds = 300
+	}
+	if cfg.Redaction.Placeholder == "" {
+		cfg.Redaction.Placeholder = "[REDACTED]"
+	}
+	if cfg.Redaction.RedactIPs == "" {
+		cfg.Redaction.RedactIPs = "private_only"
 	}
 	if cfg.BaseDir == "" {
 		home, _ := os.UserHomeDir()
