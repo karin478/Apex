@@ -23,4 +23,6 @@ e2e:
 	go test ./e2e/... -v -count=1 -timeout=120s
 
 e2e-live:
-	APEX_LIVE_TESTS=1 go test ./e2e/... -v -count=1 -tags=live -timeout=300s
+	@# Load .env if present (contains CLAUDE_CODE_OAUTH_TOKEN)
+	@test -f .env && set -a && . ./.env && set +a; \
+		APEX_LIVE_TESTS=1 go test ./e2e/... -v -count=1 -tags=live -timeout=300s

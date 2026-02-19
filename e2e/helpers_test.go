@@ -122,10 +122,16 @@ func (e *TestEnv) runApexWithEnv(env map[string]string, args ...string) (stdout,
 	cmd := exec.Command(apexBin, args...)
 	cmd.Dir = e.WorkDir
 
-	// Build environment: real PATH + overridden HOME + extras
+	// Build environment: real PATH + overridden HOME + extras.
+	// CLAUDE_CODE_OAUTH_TOKEN is forwarded so that live tests can
+	// authenticate with the real Claude CLI from a temp HOME.
 	cmdEnv := []string{
 		"HOME=" + e.Home,
 		"PATH=" + os.Getenv("PATH"),
+		"USER=" + os.Getenv("USER"),
+	}
+	if tok := os.Getenv("CLAUDE_CODE_OAUTH_TOKEN"); tok != "" {
+		cmdEnv = append(cmdEnv, "CLAUDE_CODE_OAUTH_TOKEN="+tok)
 	}
 	for k, v := range env {
 		cmdEnv = append(cmdEnv, k+"="+v)

@@ -227,9 +227,17 @@ func (d *DAG) Summary() string {
 	defer d.mu.Unlock()
 	var lines []string
 	for _, n := range d.Nodes {
-		line := fmt.Sprintf("  [%s] %s: %s", n.Status, n.ID, n.Task)
+		line := fmt.Sprintf("  [%s] task: %s", n.Status, n.Task)
 		if n.Error != "" {
 			line += fmt.Sprintf(" (error: %s)", n.Error)
+		}
+		if n.Result != "" {
+			// Truncate long results for readability.
+			result := n.Result
+			if len(result) > 500 {
+				result = result[:500] + "..."
+			}
+			line += "\n    → " + strings.ReplaceAll(result, "\n", "\n      ")
 		}
 		lines = append(lines, line)
 	}

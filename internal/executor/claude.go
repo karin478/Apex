@@ -3,12 +3,20 @@ package executor
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"time"
 
 	"github.com/lyndonlyu/apex/internal/sandbox"
 )
+
+// claudeJSONEnvelope represents the JSON output format of the Claude CLI
+// when invoked with --output-format json.
+type claudeJSONEnvelope struct {
+	Result  string `json:"result"`
+	IsError bool   `json:"is_error"`
+}
 
 type Options struct {
 	Model   string
@@ -90,8 +98,28 @@ func (e *Executor) Run(ctx context.Context, task string) (Result, error) {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
 		}
+		// Even on non-zero exit, try to extract the result text from the
+		// Claude JSON envelope so callers get a meaningful error message.
+		result.Output = extractResult(result.Output)
 		return result, err
 	}
 
+	result.Output = extractResult(result.Output)
+
 	return result, nil
+}
+
+// extractResult attempts to parse the Claude CLI JSON envelope and return
+// the inner result text. If parsing fails (e.g. output from a mock binary
+// that doesn't use the JSON envelope), the original string is returned
+// unchanged for backward compatibility.
+func extractResult(raw string) string {
+	var env claudeJSONEnvelope
+	if err := json.Unmarshal([]byte(raw), &env); err != nil {
+		return raw
+	}
+	if env.Result == "" {
+		return raw
+	}
+	return env.Result
 }
