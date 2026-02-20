@@ -67,6 +67,9 @@ func GetVersion(db *sql.DB) (int, error) {
 
 // SetVersion sets the schema version in the database using PRAGMA user_version.
 func SetVersion(db *sql.DB, version int) error {
+	if version < 0 {
+		return fmt.Errorf("version must be non-negative, got %d", version)
+	}
 	_, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", version))
 	if err != nil {
 		return fmt.Errorf("set user_version to %d: %w", version, err)
@@ -75,6 +78,8 @@ func SetVersion(db *sql.DB, version int) error {
 }
 
 // Backup creates a copy of the database file at {dbPath}.bak.{unix_timestamp}.
+// If the database uses WAL journal mode, the caller must ensure a checkpoint
+// has been performed before calling Backup, or the copy may be incomplete.
 // It returns the path of the backup file.
 func Backup(dbPath string) (string, error) {
 	backupPath := fmt.Sprintf("%s.bak.%d", dbPath, time.Now().Unix())
@@ -116,7 +121,9 @@ func (r *Registry) Migrate(db *sql.DB, dbPath string) (*MigrationResult, error) 
 		return nil, err
 	}
 
-	// Already up to date.
+	if current > r.Latest() {
+		return nil, fmt.Errorf("database version %d exceeds latest migration %d", current, r.Latest())
+	}
 	if current == r.Latest() {
 		return &MigrationResult{
 			FromVersion: current,
