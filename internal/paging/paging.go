@@ -50,6 +50,7 @@ func NewBudget(maxPages, maxTokens int) *Budget {
 }
 
 // CanPage returns true if there is remaining page and token budget.
+// Uses strict less-than: a budget at exactly MaxPages or MaxTokens is exhausted.
 func (b *Budget) CanPage() bool {
 	return b.PagesUsed < b.MaxPages && b.TokensUsed < b.MaxTokens
 }
@@ -115,11 +116,12 @@ func (p *Pager) Page(req PageRequest) (PageResult, error) {
 	}
 
 	selected := lines[start:end]
+	joined := strings.Join(selected, "\n")
 	result := PageResult{
 		ArtifactID: req.ArtifactID,
-		Content:    strings.Join(selected, "\n"),
+		Content:    joined,
 		Lines:      len(selected),
-		Tokens:     EstimateTokens(strings.Join(selected, "\n")),
+		Tokens:     EstimateTokens(joined),
 	}
 
 	p.budget.Record(result.Tokens)
