@@ -35,8 +35,9 @@
 | 19 | Maintenance GC | `2026-02-20-phase19-maintenance-gc-design.md` | Done |
 | 20 | Hypothesis Board | `2026-02-20-phase20-hypothesis-board-design.md` | Done |
 | 21 | Run Manifest Diffing | `2026-02-20-phase21-run-diff-design.md` | Done |
+| 22 | Policy Change Audit | `2026-02-20-phase22-policy-change-audit-design.md` | Done |
 
-## Current: Phase 22 — TBD
+## Current: Phase 23 — TBD
 
 No phase in progress.
 
@@ -45,7 +46,7 @@ No phase in progress.
 | Suite | Command | Coverage |
 |-------|---------|----------|
 | Unit tests | `make test` | 29 packages |
-| E2E tests (mock) | `make e2e` | 63 tests, all CLI commands |
+| E2E tests (mock) | `make e2e` | 66 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -60,7 +61,7 @@ No phase in progress.
 | `internal/vectordb` | Local vector similarity search |
 | `internal/context` | Context builder + token compression |
 | `internal/search` | Semantic search engine |
-| `internal/audit` | Structured audit logging + daily anchor verification |
+| `internal/audit` | Structured audit logging + daily anchor verification + policy change tracking |
 | `internal/manifest` | Execution manifest tracking + run diffing |
 | `internal/killswitch` | Emergency stop via file signal |
 | `internal/snapshot` | Git-stash-based rollback |
