@@ -133,7 +133,7 @@ func TestQueryRelated(t *testing.T) {
 	require.NoError(t, err)
 
 	// depth=2 from A should reach B (depth 1) and C (depth 2), but NOT D.
-	related := g.QueryRelated(a.ID, 2, 0)
+	related, rels := g.QueryRelated(a.ID, 2, 0)
 	ids := map[string]bool{}
 	for _, e := range related {
 		ids[e.CanonicalName] = true
@@ -142,6 +142,15 @@ func TestQueryRelated(t *testing.T) {
 	assert.True(t, ids["C"], "C should be reachable at depth 2")
 	assert.False(t, ids["D"], "D should NOT be reachable at depth 2")
 	assert.Len(t, related, 2)
+
+	// Verify relationships are returned for the traversed edges.
+	assert.Len(t, rels, 2, "should return 2 relationships (A->B and B->C)")
+	relFromTo := map[string]string{}
+	for _, r := range rels {
+		relFromTo[r.FromID] = r.ToID
+	}
+	assert.Equal(t, b.ID, relFromTo[a.ID], "should contain A->B relationship")
+	assert.Equal(t, c.ID, relFromTo[b.ID], "should contain B->C relationship")
 }
 
 // ---------------------------------------------------------------------------
@@ -161,8 +170,9 @@ func TestQueryRelatedMaxNodes(t *testing.T) {
 	}
 
 	// maxNodes=3 should return at most 3 entities.
-	related := g.QueryRelated(hub.ID, 2, 3)
+	related, rels := g.QueryRelated(hub.ID, 2, 3)
 	assert.Len(t, related, 3)
+	assert.Len(t, rels, 3, "should return one relationship per discovered node")
 }
 
 // ---------------------------------------------------------------------------

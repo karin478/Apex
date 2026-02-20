@@ -80,7 +80,7 @@ type Stats struct {
 	TotalEntities      int            `json:"total_entities"`
 	TotalRelationships int            `json:"total_relationships"`
 	EntitiesByType     map[string]int `json:"entities_by_type"`
-	RelsByType         map[string]int `json:"rels_by_type"`
+	RelsByType         map[string]int `json:"relationships_by_type"`
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +149,17 @@ func (g *Graph) AddEntity(etype EntityType, canonicalName, project, namespace st
 }
 
 // ---------------------------------------------------------------------------
+// GetEntity
+// ---------------------------------------------------------------------------
+
+// GetEntity returns the entity with the given ID, or nil if not found.
+func (g *Graph) GetEntity(id string) *Entity {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.ents[id]
+}
+
+// ---------------------------------------------------------------------------
 // AddRelationship
 // ---------------------------------------------------------------------------
 
@@ -202,9 +213,10 @@ func (g *Graph) QueryByName(name string) []*Entity {
 // ---------------------------------------------------------------------------
 
 // QueryRelated performs a BFS from the given entity up to depth hops,
-// returning at most maxNodes connected entities (excluding the start node).
+// returning at most maxNodes connected entities (excluding the start node)
+// along with the relationships traversed during the search.
 // Defaults: depth=2, maxNodes=200 when zero values are passed.
-func (g *Graph) QueryRelated(entityID string, depth, maxNodes int) []*Entity {
+func (g *Graph) QueryRelated(entityID string, depth, maxNodes int) ([]*Entity, []*Relationship) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
@@ -216,8 +228,10 @@ func (g *Graph) QueryRelated(entityID string, depth, maxNodes int) []*Entity {
 	}
 
 	visited := map[string]bool{entityID: true}
+	visitedRels := map[string]bool{}
 	queue := []string{entityID}
 	var result []*Entity
+	var rels []*Relationship
 
 	for d := 0; d < depth && len(queue) > 0; d++ {
 		var next []string
@@ -235,10 +249,14 @@ func (g *Graph) QueryRelated(entityID string, depth, maxNodes int) []*Entity {
 					continue
 				}
 				visited[neighbour] = true
+				if !visitedRels[r.ID] {
+					visitedRels[r.ID] = true
+					rels = append(rels, r)
+				}
 				if e, ok := g.ents[neighbour]; ok {
 					result = append(result, e)
 					if len(result) >= maxNodes {
-						return result
+						return result, rels
 					}
 					next = append(next, neighbour)
 				}
@@ -246,7 +264,7 @@ func (g *Graph) QueryRelated(entityID string, depth, maxNodes int) []*Entity {
 		}
 		queue = next
 	}
-	return result
+	return result, rels
 }
 
 // ---------------------------------------------------------------------------
@@ -326,8 +344,8 @@ func (g *Graph) Stats() Stats {
 
 // Save persists the graph to {dir}/graph.json.
 func (g *Graph) Save() error {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
+	g.mu.Lock()
+	defer g.mu.Unlock()
 
 	if err := os.MkdirAll(g.dir, 0o755); err != nil {
 		return fmt.Errorf("kg: mkdir: %w", err)
