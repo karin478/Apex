@@ -74,8 +74,8 @@ func LoadVaultDir(dir string) (*Vault, error) {
 func Resolve(ref CredentialRef) (string, error) {
 	switch ref.Source {
 	case "env":
-		val := os.Getenv(ref.Key)
-		if val == "" {
+		val, ok := os.LookupEnv(ref.Key)
+		if !ok {
 			return "", fmt.Errorf("credinjector: env var %s not set", ref.Key)
 		}
 		return val, nil
