@@ -3,6 +3,7 @@
 package memclean
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,6 +95,15 @@ func Scan(memDir string) ([]MemoryEntry, error) {
 	return entries, nil
 }
 
+// buildExemptSet returns a set of category names that should be exempt from cleanup.
+func buildExemptSet(cats []string) map[string]bool {
+	m := make(map[string]bool, len(cats))
+	for _, cat := range cats {
+		m[cat] = true
+	}
+	return m
+}
+
 // Evaluate determines which entries should be removed and which should be kept.
 // If the number of entries is below the capacity threshold (MaxEntries * CapacityThreshold),
 // no entries are marked for removal. Otherwise, entries that are:
@@ -109,10 +119,7 @@ func Evaluate(entries []MemoryEntry, cfg CleanupConfig, now time.Time) (toRemove
 		return nil, entries
 	}
 
-	exempt := make(map[string]bool, len(cfg.ExemptCategories))
-	for _, cat := range cfg.ExemptCategories {
-		exempt[cat] = true
-	}
+	exempt := buildExemptSet(cfg.ExemptCategories)
 
 	staleCutoff := now.AddDate(0, 0, -cfg.StaleAfterDays)
 
@@ -131,17 +138,21 @@ func Evaluate(entries []MemoryEntry, cfg CleanupConfig, now time.Time) (toRemove
 	return toRemove, toKeep
 }
 
-// Execute removes the files listed in toRemove from memDir. It returns a
-// CleanupResult with the Removed count populated and the count of successfully
-// removed files as a separate return value.
+// Execute removes the files listed in toRemove from memDir using a best-effort
+// approach: it processes every entry even if some removals fail, and returns a
+// partial CleanupResult with the count of successfully removed files. If any
+// non-NotExist errors occurred, they are collected and returned as a single
+// combined error after all entries have been attempted.
 func Execute(memDir string, toRemove []MemoryEntry) (*CleanupResult, int, error) {
 	removed := 0
+	var errs []error
 
 	for _, entry := range toRemove {
 		fullPath := filepath.Join(memDir, entry.Path)
 		if err := os.Remove(fullPath); err != nil {
 			if !os.IsNotExist(err) {
-				return nil, removed, err
+				errs = append(errs, fmt.Errorf("remove %s: %w", entry.Path, err))
+				continue
 			}
 			// File already gone — count it as removed.
 		}
@@ -150,6 +161,10 @@ func Execute(memDir string, toRemove []MemoryEntry) (*CleanupResult, int, error)
 
 	result := &CleanupResult{
 		Removed: removed,
+	}
+
+	if len(errs) > 0 {
+		return result, removed, fmt.Errorf("failed to remove %d of %d entries: %v", len(errs), len(toRemove), errs)
 	}
 
 	return result, removed, nil
@@ -166,10 +181,7 @@ func DryRun(memDir string, cfg CleanupConfig) (*CleanupResult, []MemoryEntry, er
 	toRemove, toKeep := Evaluate(entries, cfg, time.Now())
 
 	// Count exempted entries (entries in exempt categories).
-	exempt := make(map[string]bool, len(cfg.ExemptCategories))
-	for _, cat := range cfg.ExemptCategories {
-		exempt[cat] = true
-	}
+	exempt := buildExemptSet(cfg.ExemptCategories)
 	exempted := 0
 	for _, entry := range toKeep {
 		if exempt[entry.Category] {
