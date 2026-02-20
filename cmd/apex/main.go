@@ -45,6 +45,7 @@ func init() {
 	rootCmd.AddCommand(artifactCmd)
 	rootCmd.AddCommand(kgCmd)
 	rootCmd.AddCommand(aggregateCmd)
+	rootCmd.AddCommand(ratelimitCmd)
 }
 
 func main() {
