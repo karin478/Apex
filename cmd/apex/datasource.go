@@ -109,7 +109,10 @@ func runDatasourceValidate(cmd *cobra.Command, args []string) error {
 
 	var paths []string
 	for _, ext := range []string{"*.yaml", "*.yml"} {
-		matches, _ := filepath.Glob(filepath.Join(dir, ext))
+		matches, err := filepath.Glob(filepath.Join(dir, ext))
+		if err != nil {
+			return fmt.Errorf("datasource: glob %s: %w", ext, err)
+		}
 		paths = append(paths, matches...)
 	}
 
