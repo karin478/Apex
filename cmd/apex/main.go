@@ -35,6 +35,7 @@ func init() {
 	rootCmd.AddCommand(reviewCmd)
 	rootCmd.AddCommand(pluginCmd)
 	rootCmd.AddCommand(redactCmd)
+	rootCmd.AddCommand(traceCmd)
 }
 
 func main() {
