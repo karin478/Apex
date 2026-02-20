@@ -34,8 +34,9 @@
 | 18 | Metrics Export | `2026-02-20-phase18-metrics-export-design.md` | Done |
 | 19 | Maintenance GC | `2026-02-20-phase19-maintenance-gc-design.md` | Done |
 | 20 | Hypothesis Board | `2026-02-20-phase20-hypothesis-board-design.md` | Done |
+| 21 | Run Manifest Diffing | `2026-02-20-phase21-run-diff-design.md` | Done |
 
-## Current: Phase 21 — TBD
+## Current: Phase 22 — TBD
 
 No phase in progress.
 
@@ -44,7 +45,7 @@ No phase in progress.
 | Suite | Command | Coverage |
 |-------|---------|----------|
 | Unit tests | `make test` | 29 packages |
-| E2E tests (mock) | `make e2e` | 60 tests, all CLI commands |
+| E2E tests (mock) | `make e2e` | 63 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -60,7 +61,7 @@ No phase in progress.
 | `internal/context` | Context builder + token compression |
 | `internal/search` | Semantic search engine |
 | `internal/audit` | Structured audit logging + daily anchor verification |
-| `internal/manifest` | Execution manifest tracking |
+| `internal/manifest` | Execution manifest tracking + run diffing |
 | `internal/killswitch` | Emergency stop via file signal |
 | `internal/snapshot` | Git-stash-based rollback |
 | `internal/governance` | Risk classification |
