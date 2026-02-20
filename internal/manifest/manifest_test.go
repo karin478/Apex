@@ -69,3 +69,55 @@ func TestRecentEmpty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, recent)
 }
+
+func TestManifestTraceID(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	m := &Manifest{
+		RunID:      "trace-run-001",
+		Task:       "traced task",
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+		Model:      "claude-opus-4-6",
+		Effort:     "high",
+		RiskLevel:  "LOW",
+		NodeCount:  1,
+		DurationMs: 1200,
+		Outcome:    "success",
+		TraceID:    "trace-abc-123",
+		Nodes: []NodeResult{
+			{ID: "step-1", Task: "do traced work", Status: "completed"},
+		},
+	}
+	require.NoError(t, store.Save(m))
+
+	loaded, err := store.Load("trace-run-001")
+	require.NoError(t, err)
+	assert.Equal(t, "trace-abc-123", loaded.TraceID)
+}
+
+func TestNodeResultActionID(t *testing.T) {
+	dir := t.TempDir()
+	store := NewStore(dir)
+	m := &Manifest{
+		RunID:      "action-run-001",
+		Task:       "action task",
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+		Model:      "claude-opus-4-6",
+		Effort:     "medium",
+		RiskLevel:  "MEDIUM",
+		NodeCount:  2,
+		DurationMs: 3000,
+		Outcome:    "success",
+		Nodes: []NodeResult{
+			{ID: "step-1", Task: "first action", Status: "completed", ActionID: "act-001"},
+			{ID: "step-2", Task: "second action", Status: "completed", ActionID: "act-002"},
+		},
+	}
+	require.NoError(t, store.Save(m))
+
+	loaded, err := store.Load("action-run-001")
+	require.NoError(t, err)
+	require.Len(t, loaded.Nodes, 2)
+	assert.Equal(t, "act-001", loaded.Nodes[0].ActionID)
+	assert.Equal(t, "act-002", loaded.Nodes[1].ActionID)
+}

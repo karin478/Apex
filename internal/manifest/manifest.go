@@ -12,10 +12,11 @@ import (
 
 // NodeResult captures the outcome of a single node (step) in a run.
 type NodeResult struct {
-	ID     string `json:"id"`
-	Task   string `json:"task"`
-	Status string `json:"status"`
-	Error  string `json:"error,omitempty"`
+	ID       string `json:"id"`
+	Task     string `json:"task"`
+	Status   string `json:"status"`
+	Error    string `json:"error,omitempty"`
+	ActionID string `json:"action_id,omitempty"`
 }
 
 // Manifest holds the complete metadata for one execution run.
@@ -29,6 +30,7 @@ type Manifest struct {
 	NodeCount  int          `json:"node_count"`
 	DurationMs int64        `json:"duration_ms"`
 	Outcome    string       `json:"outcome"`
+	TraceID    string       `json:"trace_id,omitempty"`
 	Nodes      []NodeResult `json:"nodes"`
 }
 
