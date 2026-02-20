@@ -51,6 +51,7 @@ func init() {
 	rootCmd.AddCommand(migrationCmd)
 	rootCmd.AddCommand(datasourceCmd)
 	rootCmd.AddCommand(credentialCmd)
+	rootCmd.AddCommand(pagingCmd)
 }
 
 func main() {
