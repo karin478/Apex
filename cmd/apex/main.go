@@ -52,6 +52,7 @@ func init() {
 	rootCmd.AddCommand(datasourceCmd)
 	rootCmd.AddCommand(credentialCmd)
 	rootCmd.AddCommand(pagingCmd)
+	rootCmd.AddCommand(modeCmd)
 }
 
 func main() {
