@@ -54,6 +54,7 @@ func init() {
 	rootCmd.AddCommand(pagingCmd)
 	rootCmd.AddCommand(modeCmd)
 	rootCmd.AddCommand(progressCmd)
+	rootCmd.AddCommand(profileCmd)
 }
 
 func main() {
