@@ -62,6 +62,7 @@ type Result struct {
 // ---------------------------------------------------------------------------
 
 // Pipeline aggregates multiple inputs using a chosen strategy.
+// Pipeline is not safe for concurrent use; all Add calls must complete before Execute is called.
 type Pipeline struct {
 	strategy Strategy
 	inputs   []Input
@@ -166,7 +167,9 @@ func (p *Pipeline) executeMerge() (*Result, error) {
 		merged = deduped
 	}
 
-	// Sort by SortField ascending (string comparison).
+	// Sort by SortField ascending. Note: values are compared as strings via
+	// fmt.Sprintf("%v", ...), so numeric fields will sort lexicographically
+	// (e.g. "9" > "10") rather than by numeric value.
 	if p.mergeOpt != nil && p.mergeOpt.SortField != "" {
 		sortField := p.mergeOpt.SortField
 		sort.SliceStable(merged, func(i, j int) bool {

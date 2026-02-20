@@ -172,6 +172,38 @@ func TestReduce(t *testing.T) {
 	assert.Equal(t, "Count: 4, Sum: 100.00, Min: 10.00, Max: 40.00, Avg: 25.00", res.Output)
 }
 
+func TestReduceMixedNumericTypes(t *testing.T) {
+	cases := []struct {
+		name  string
+		input interface{}
+		want  float64
+	}{
+		{"int", int(5), 5.0},
+		{"int32", int32(5), 5.0},
+		{"int64", int64(5), 5.0},
+		{"uint", uint(5), 5.0},
+		{"float32", float32(5), 5.0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := NewPipeline(StrategyReduce)
+			p.Add(Input{NodeID: "n1", Data: tc.input})
+			res, err := p.Execute()
+			require.NoError(t, err)
+			stats := res.Data.(ReduceStats)
+			assert.Equal(t, tc.want, stats.Sum)
+		})
+	}
+}
+
+func TestExecuteUnknownStrategy(t *testing.T) {
+	p := NewPipeline(Strategy("invalid"))
+	p.Add(Input{NodeID: "n1", Content: "x"})
+	res, err := p.Execute()
+	assert.Nil(t, res)
+	assert.Contains(t, err.Error(), "unknown strategy")
+}
+
 func TestReduceEmpty(t *testing.T) {
 	p := NewPipeline(StrategyReduce)
 
