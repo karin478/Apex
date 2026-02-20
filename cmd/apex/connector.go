@@ -49,13 +49,17 @@ func loadAllSpecs() ([]*connector.ConnectorSpec, error) {
 		return nil, err
 	}
 
-	matches, err := filepath.Glob(filepath.Join(dir, "*.yaml"))
-	if err != nil {
-		return nil, fmt.Errorf("connector: glob specs: %w", err)
+	var paths []string
+	for _, ext := range []string{"*.yaml", "*.yml"} {
+		matches, err := filepath.Glob(filepath.Join(dir, ext))
+		if err != nil {
+			return nil, fmt.Errorf("connector: glob %s: %w", ext, err)
+		}
+		paths = append(paths, matches...)
 	}
 
 	var specs []*connector.ConnectorSpec
-	for _, path := range matches {
+	for _, path := range paths {
 		spec, err := connector.LoadSpec(path)
 		if err != nil {
 			return nil, err
@@ -71,11 +75,6 @@ func runConnectorList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(specs) == 0 {
-		fmt.Println("No connectors registered.")
-		return nil
-	}
-
 	fmt.Print(connector.FormatConnectorList(specs))
 	return nil
 }
@@ -84,11 +83,6 @@ func runConnectorStatus(cmd *cobra.Command, args []string) error {
 	specs, err := loadAllSpecs()
 	if err != nil {
 		return err
-	}
-
-	if len(specs) == 0 {
-		fmt.Println("No connectors registered.")
-		return nil
 	}
 
 	// Create a registry and register all specs to get breaker statuses.
