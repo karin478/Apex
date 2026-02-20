@@ -36,8 +36,9 @@
 | 20 | Hypothesis Board | `2026-02-20-phase20-hypothesis-board-design.md` | Done |
 | 21 | Run Manifest Diffing | `2026-02-20-phase21-run-diff-design.md` | Done |
 | 22 | Policy Change Audit | `2026-02-20-phase22-policy-change-audit-design.md` | Done |
+| 23 | System Dashboard | `2026-02-20-phase23-dashboard-design.md` | Done |
 
-## Current: Phase 23 — TBD
+## Current: Phase 24 — TBD
 
 No phase in progress.
 
@@ -45,8 +46,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 29 packages |
-| E2E tests (mock) | `make e2e` | 66 tests, all CLI commands |
+| Unit tests | `make test` | 30 packages |
+| E2E tests (mock) | `make e2e` | 69 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -80,3 +81,4 @@ No phase in progress.
 | `internal/metrics` | Metrics collection and export (runs, DAG, health, audit) |
 | `internal/gc` | Garbage collection for old runs, audit logs, and snapshots |
 | `internal/hypothesis` | Hypothesis board with propose/challenge/confirm/reject lifecycle |
+| `internal/dashboard` | System status dashboard aggregating health, runs, metrics, audit |
