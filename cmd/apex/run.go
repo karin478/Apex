@@ -61,6 +61,14 @@ func runTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create dirs: %w", err)
 	}
 
+	// Policy change tracking
+	policyDir := filepath.Join(cfg.BaseDir, "policy-state")
+	policyTracker := audit.NewPolicyTracker(policyDir)
+	policyChanges, policyErr := policyTracker.Check([]string{configPath})
+	if policyErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: policy check failed: %v\n", policyErr)
+	}
+
 	// Kill switch pre-flight check
 	ks := killswitch.New(killSwitchPath())
 	if ks.IsActive() {
@@ -317,6 +325,28 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 	if logger != nil {
 		logger.SetRedactor(redact.New(cfg.Redaction))
+	}
+
+	// Log policy changes to audit
+	if logger != nil && len(policyChanges) > 0 {
+		for _, pc := range policyChanges {
+			oldShort := pc.OldChecksum
+			if len(oldShort) > 10 {
+				oldShort = oldShort[:10]
+			}
+			newShort := pc.NewChecksum
+			if len(newShort) > 10 {
+				newShort = newShort[:10]
+			}
+			fmt.Printf("[POLICY] %s changed (%s\u2192%s)\n", filepath.Base(pc.File), oldShort, newShort)
+			logger.Log(audit.Entry{
+				Task:      fmt.Sprintf("[policy_change] %s", pc.File),
+				RiskLevel: "info",
+				Outcome:   "detected",
+				Model:     cfg.Claude.Model,
+				Error:     fmt.Sprintf("%s\u2192%s", pc.OldChecksum, pc.NewChecksum),
+			})
+		}
 	}
 
 	// Pre-generate action IDs for each node so we can build causal links
