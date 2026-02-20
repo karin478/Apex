@@ -32,6 +32,9 @@ func runMemoryCleanup(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg := memclean.DefaultConfig()
+	if cleanupMaxEntries < 0 {
+		return fmt.Errorf("--max-entries must be a positive integer, got %d", cleanupMaxEntries)
+	}
 	if cleanupMaxEntries > 0 {
 		cfg.MaxEntries = cleanupMaxEntries
 	}
@@ -42,9 +45,14 @@ func runMemoryCleanup(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("memory cleanup dry-run: %w", err)
 		}
 
+		if result.Scanned == 0 {
+			fmt.Println("Nothing to clean — memory directory is empty.")
+			return nil
+		}
+
 		fmt.Println("Dry run — no files removed")
-		fmt.Printf("Memory cleanup summary: Scanned=%d Removed=%d Remaining=%d\n",
-			result.Scanned, result.Removed, result.Remaining)
+		fmt.Printf("Memory cleanup summary: Scanned=%d Removed=%d Exempted=%d Remaining=%d\n",
+			result.Scanned, result.Removed, result.Exempted, result.Remaining)
 
 		if len(toRemove) > 0 {
 			fmt.Println("\nWould remove:")
@@ -62,6 +70,11 @@ func runMemoryCleanup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("memory cleanup scan: %w", err)
 	}
 
+	if len(entries) == 0 {
+		fmt.Println("Nothing to clean — memory directory is empty.")
+		return nil
+	}
+
 	toRemove, toKeep := memclean.Evaluate(entries, cfg, time.Now())
 
 	_, removed, err := memclean.Execute(memDir, toRemove)
@@ -69,9 +82,21 @@ func runMemoryCleanup(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.ErrOrStderr(), "warning: %v\n", err)
 	}
 
+	// Count exempted entries (entries in exempt categories that were kept).
+	exempt := make(map[string]bool, len(cfg.ExemptCategories))
+	for _, cat := range cfg.ExemptCategories {
+		exempt[cat] = true
+	}
+	exempted := 0
+	for _, entry := range toKeep {
+		if exempt[entry.Category] {
+			exempted++
+		}
+	}
+
 	remaining := len(toKeep) + (len(toRemove) - removed)
-	fmt.Printf("Memory cleanup complete: Scanned=%d Removed=%d Remaining=%d\n",
-		len(entries), removed, remaining)
+	fmt.Printf("Memory cleanup complete: Scanned=%d Removed=%d Exempted=%d Remaining=%d\n",
+		len(entries), removed, exempted, remaining)
 
 	return nil
 }
