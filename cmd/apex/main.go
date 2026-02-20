@@ -48,6 +48,7 @@ func init() {
 	rootCmd.AddCommand(ratelimitCmd)
 	rootCmd.AddCommand(connectorCmd)
 	rootCmd.AddCommand(eventCmd)
+	rootCmd.AddCommand(migrationCmd)
 }
 
 func main() {
