@@ -53,8 +53,9 @@
 | 37 | Mode Selector | `2026-02-20-phase37-mode-selector-design.md` | Done |
 | 38 | Progress Tracker | `2026-02-20-phase38-progress-tracker-design.md` | Done |
 | 39 | Configuration Profile Manager | `2026-02-20-phase39-config-profile-design.md` | Done |
+| 40 | Notification System | `2026-02-20-phase40-notification-system-design.md` | Done |
 
-## Current: Phase 40 — TBD
+## Current: Phase 41 — TBD
 
 No phase in progress.
 
@@ -62,8 +63,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 45 packages |
-| E2E tests (mock) | `make e2e` | 117 tests, all CLI commands |
+| Unit tests | `make test` | 46 packages |
+| E2E tests (mock) | `make e2e` | 120 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -113,3 +114,4 @@ No phase in progress.
 | `internal/mode` | Execution mode selector with 5 modes (NORMAL/URGENT/EXPLORATORY/BATCH/LONG_RUNNING) and complexity-based auto-selection |
 | `internal/progress` | Structured task progress tracking with Start/Update/Complete/Fail lifecycle and percent clamping |
 | `internal/profile` | Named configuration profiles with registry, YAML loading, and environment switching (dev/staging/prod) |
+| `internal/notify` | Event-driven notification with Channel interface, rule-based routing, and multi-channel dispatch |
