@@ -44,8 +44,9 @@
 | 28 | Artifact Lineage | `2026-02-20-phase28-artifact-lineage-design.md` | Done |
 | 29 | Rate Limit Groups | `2026-02-20-phase29-rate-limit-groups-design.md` | Done |
 | 30 | Memory Auto-Cleanup | `2026-02-20-phase30-memory-auto-cleanup-design.md` | Done |
+| 31 | Connector Framework | `2026-02-20-phase31-connector-framework-design.md` | Done |
 
-## Current: Phase 31 — TBD
+## Current: Phase 32 — TBD
 
 No phase in progress.
 
@@ -53,8 +54,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 36 packages |
-| E2E tests (mock) | `make e2e` | 90 tests, all CLI commands |
+| Unit tests | `make test` | 37 packages |
+| E2E tests (mock) | `make e2e` | 93 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -95,3 +96,4 @@ No phase in progress.
 | `internal/memport` | Memory import/export with JSON serialization and merge strategies |
 | `internal/ratelimit` | Token bucket rate limiter with named groups for shared rate limiting |
 | `internal/memclean` | Rule-based memory auto-cleanup with capacity threshold, stale detection, and exempt categories |
+| `internal/connector` | Tool connector framework with YAML spec loading, 4-state circuit breaker, and registry |
