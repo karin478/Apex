@@ -32,8 +32,9 @@
 | 16 | System Health Level | `2026-02-19-phase16-system-health-level-design.md` | Done |
 | 17 | Causal Chain / Tracing | `2026-02-20-phase17-causal-chain-tracing-design.md` | Done |
 | 18 | Metrics Export | `2026-02-20-phase18-metrics-export-design.md` | Done |
+| 19 | Maintenance GC | `2026-02-20-phase19-maintenance-gc-design.md` | Done |
 
-## Current: Phase 19 — TBD
+## Current: Phase 20 — TBD
 
 No phase in progress.
 
@@ -41,8 +42,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 27 packages |
-| E2E tests (mock) | `make e2e` | 54 tests, all CLI commands |
+| Unit tests | `make test` | 28 packages |
+| E2E tests (mock) | `make e2e` | 57 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -74,3 +75,4 @@ No phase in progress.
 | `internal/health` | System health level state machine (GREEN/YELLOW/RED/CRITICAL) |
 | `internal/trace` | Causal chain tracing with TraceContext + parent-child linkage |
 | `internal/metrics` | Metrics collection and export (runs, DAG, health, audit) |
+| `internal/gc` | Garbage collection for old runs, audit logs, and snapshots |
