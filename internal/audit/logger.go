@@ -46,6 +46,7 @@ type Entry struct {
 	SandboxLevel   string
 	TraceID        string
 	ParentActionID string
+	ActionID       string // optional; auto-generated if empty
 }
 
 type Record struct {
@@ -118,9 +119,13 @@ func computeHash(r Record) string {
 }
 
 func (l *Logger) Log(entry Entry) error {
+	actionID := entry.ActionID
+	if actionID == "" {
+		actionID = uuid.New().String()
+	}
 	record := Record{
 		Timestamp:    time.Now().UTC().Format(time.RFC3339),
-		ActionID:     uuid.New().String(),
+		ActionID:     actionID,
 		Task:         entry.Task,
 		RiskLevel:    entry.RiskLevel,
 		Outcome:      entry.Outcome,

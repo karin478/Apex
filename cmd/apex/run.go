@@ -319,6 +319,12 @@ func runTask(cmd *cobra.Command, args []string) error {
 		logger.SetRedactor(redact.New(cfg.Redaction))
 	}
 
+	// Pre-generate action IDs for each node so we can build causal links
+	nodeActionIDs := make(map[string]string)
+	for id := range d.Nodes {
+		nodeActionIDs[id] = uuid.New().String()
+	}
+
 	// Log each node
 	if logger != nil {
 		for _, n := range d.Nodes {
@@ -331,6 +337,11 @@ func runTask(cmd *cobra.Command, args []string) error {
 				nodeOutcome = "interrupted"
 				nodeErr = "kill switch activated"
 			}
+			// Determine parent: first DAG dependency's action ID, else empty (root)
+			parentActionID := ""
+			if len(n.Depends) > 0 {
+				parentActionID = nodeActionIDs[n.Depends[0]]
+			}
 			logger.Log(audit.Entry{
 				Task:           fmt.Sprintf("[%s] %s", n.ID, n.Task),
 				RiskLevel:      risk.String(),
@@ -340,7 +351,8 @@ func runTask(cmd *cobra.Command, args []string) error {
 				Error:          nodeErr,
 				SandboxLevel:   sb.Level().String(),
 				TraceID:        tc.TraceID,
-				ParentActionID: tc.ParentActionID,
+				ParentActionID: parentActionID,
+				ActionID:       nodeActionIDs[n.ID],
 			})
 		}
 	}
@@ -384,9 +396,10 @@ func runTask(cmd *cobra.Command, args []string) error {
 	var nodeResults []manifest.NodeResult
 	for _, n := range d.Nodes {
 		nr := manifest.NodeResult{
-			ID:     n.ID,
-			Task:   n.Task,
-			Status: n.Status.String(),
+			ID:       n.ID,
+			Task:     n.Task,
+			Status:   n.Status.String(),
+			ActionID: nodeActionIDs[n.ID],
 		}
 		if n.Status == dag.Failed {
 			nr.Error = n.Error
