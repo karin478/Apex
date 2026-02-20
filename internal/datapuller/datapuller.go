@@ -74,7 +74,7 @@ func LoadDir(dir string) ([]*SourceSpec, error) {
 		for _, path := range matches {
 			spec, err := LoadSpec(path)
 			if err != nil {
-				return nil, err
+				continue // skip invalid specs
 			}
 			specs = append(specs, spec)
 		}
@@ -89,6 +89,9 @@ func ValidateSpec(spec SourceSpec) error {
 	}
 	if spec.URL == "" {
 		return fmt.Errorf("datapuller: spec missing required field: url")
+	}
+	if spec.AuthType == "bearer" && spec.AuthToken == "" {
+		return fmt.Errorf("datapuller: auth_type bearer requires auth_token")
 	}
 	return nil
 }
@@ -156,6 +159,11 @@ func Pull(spec SourceSpec, client HTTPClient) PullResult {
 
 	result.StatusCode = resp.StatusCode
 	result.RawBytes = len(body)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		result.Error = fmt.Errorf("datapuller: HTTP %d from %s", resp.StatusCode, spec.URL)
+		return result
+	}
 
 	// Apply transform.
 	transformed, err := ApplyTransform(body, spec.Transform)
