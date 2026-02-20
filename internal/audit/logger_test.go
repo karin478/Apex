@@ -357,6 +357,137 @@ func TestLogHashCoversRedactedContent(t *testing.T) {
 	assert.Equal(t, recomputed, records[0].Hash, "hash must cover redacted content, not original")
 }
 
+func TestLogWithTraceFields(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	entry := Entry{
+		Task:           "traced task",
+		RiskLevel:      "LOW",
+		Outcome:        "success",
+		Duration:       100 * time.Millisecond,
+		Model:          "test",
+		TraceID:        "trace-abc",
+		ParentActionID: "parent-123",
+	}
+	require.NoError(t, logger.Log(entry))
+
+	records, err := logger.Recent(1)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, "trace-abc", records[0].TraceID)
+	assert.Equal(t, "parent-123", records[0].ParentActionID)
+}
+
+func TestLogTraceFieldsInHash(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	entry1 := Entry{
+		Task:      "same task",
+		RiskLevel: "LOW",
+		Outcome:   "success",
+		Duration:  time.Second,
+		Model:     "test",
+		TraceID:   "trace-AAA",
+	}
+	entry2 := Entry{
+		Task:      "same task",
+		RiskLevel: "LOW",
+		Outcome:   "success",
+		Duration:  time.Second,
+		Model:     "test",
+		TraceID:   "trace-BBB",
+	}
+
+	// Log to separate loggers so prev_hash doesn't differ
+	dir2 := t.TempDir()
+	logger2, err := NewLogger(dir2)
+	require.NoError(t, err)
+
+	require.NoError(t, logger.Log(entry1))
+	require.NoError(t, logger2.Log(entry2))
+
+	recs1, err := logger.Recent(1)
+	require.NoError(t, err)
+	recs2, err := logger2.Recent(1)
+	require.NoError(t, err)
+
+	assert.NotEqual(t, recs1[0].Hash, recs2[0].Hash,
+		"different TraceID values must produce different hashes")
+}
+
+func TestFindByTraceID(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	// Log 3 entries: 2 with trace-X, 1 with trace-Y
+	require.NoError(t, logger.Log(Entry{
+		Task: "task-1", RiskLevel: "LOW", Outcome: "success",
+		Duration: time.Second, Model: "test", TraceID: "trace-X",
+	}))
+	require.NoError(t, logger.Log(Entry{
+		Task: "task-2", RiskLevel: "LOW", Outcome: "success",
+		Duration: time.Second, Model: "test", TraceID: "trace-Y",
+	}))
+	require.NoError(t, logger.Log(Entry{
+		Task: "task-3", RiskLevel: "LOW", Outcome: "success",
+		Duration: time.Second, Model: "test", TraceID: "trace-X",
+	}))
+
+	results, err := logger.FindByTraceID("trace-X")
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+	assert.Equal(t, "task-1", results[0].Task)
+	assert.Equal(t, "task-3", results[1].Task)
+}
+
+func TestFindByTraceIDEmpty(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	require.NoError(t, logger.Log(Entry{
+		Task: "task-1", RiskLevel: "LOW", Outcome: "success",
+		Duration: time.Second, Model: "test", TraceID: "trace-X",
+	}))
+
+	results, err := logger.FindByTraceID("nonexistent-trace")
+	require.NoError(t, err)
+	assert.NotNil(t, results, "should return empty slice, not nil")
+	assert.Len(t, results, 0)
+}
+
+func TestFindByTraceIDOrder(t *testing.T) {
+	dir := t.TempDir()
+	logger, err := NewLogger(dir)
+	require.NoError(t, err)
+
+	require.NoError(t, logger.Log(Entry{
+		Task: "first", RiskLevel: "LOW", Outcome: "success",
+		Duration: time.Second, Model: "test", TraceID: "trace-order",
+	}))
+	// Small sleep to ensure distinct timestamps
+	time.Sleep(10 * time.Millisecond)
+	require.NoError(t, logger.Log(Entry{
+		Task: "second", RiskLevel: "LOW", Outcome: "success",
+		Duration: time.Second, Model: "test", TraceID: "trace-order",
+	}))
+
+	results, err := logger.FindByTraceID("trace-order")
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+
+	// Verify timestamp order (first should be earlier than second)
+	assert.Equal(t, "first", results[0].Task)
+	assert.Equal(t, "second", results[1].Task)
+	assert.True(t, results[0].Timestamp <= results[1].Timestamp,
+		"results should be in timestamp order")
+}
+
 func TestLogNoRedactorPassthrough(t *testing.T) {
 	dir := t.TempDir()
 	logger, err := NewLogger(dir)

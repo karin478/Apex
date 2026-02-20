@@ -37,13 +37,15 @@ func auditFiles(dir string) ([]string, error) {
 }
 
 type Entry struct {
-	Task         string
-	RiskLevel    string
-	Outcome      string
-	Duration     time.Duration
-	Model        string
-	Error        string
-	SandboxLevel string
+	Task           string
+	RiskLevel      string
+	Outcome        string
+	Duration       time.Duration
+	Model          string
+	Error          string
+	SandboxLevel   string
+	TraceID        string
+	ParentActionID string
 }
 
 type Record struct {
@@ -55,9 +57,11 @@ type Record struct {
 	DurationMs   int64  `json:"duration_ms"`
 	Model        string `json:"model"`
 	Error        string `json:"error,omitempty"`
-	SandboxLevel string `json:"sandbox_level,omitempty"`
-	PrevHash     string `json:"prev_hash,omitempty"`
-	Hash         string `json:"hash,omitempty"`
+	SandboxLevel   string `json:"sandbox_level,omitempty"`
+	TraceID        string `json:"trace_id,omitempty"`
+	ParentActionID string `json:"parent_action_id,omitempty"`
+	PrevHash       string `json:"prev_hash,omitempty"`
+	Hash           string `json:"hash,omitempty"`
 }
 
 type Logger struct {
@@ -123,8 +127,10 @@ func (l *Logger) Log(entry Entry) error {
 		DurationMs:   entry.Duration.Milliseconds(),
 		Model:        entry.Model,
 		Error:        entry.Error,
-		SandboxLevel: entry.SandboxLevel,
-		PrevHash:     l.lastHash,
+		SandboxLevel:   entry.SandboxLevel,
+		TraceID:        entry.TraceID,
+		ParentActionID: entry.ParentActionID,
+		PrevHash:       l.lastHash,
 	}
 	// Redact sensitive data before hashing
 	if l.redactor != nil {
@@ -267,6 +273,37 @@ func (l *Logger) LastHashForDate(date string) (string, int, error) {
 		return "", 0, nil
 	}
 	return records[len(records)-1].Hash, len(records), nil
+}
+
+func (l *Logger) FindByTraceID(traceID string) ([]Record, error) {
+	files, err := auditFiles(l.dir)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files) // ascending date order (oldest first)
+
+	results := make([]Record, 0)
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		content := strings.TrimSpace(string(data))
+		if content == "" {
+			continue
+		}
+		lines := strings.Split(content, "\n")
+		for _, line := range lines {
+			var r Record
+			if err := json.Unmarshal([]byte(line), &r); err != nil {
+				continue
+			}
+			if r.TraceID == traceID {
+				results = append(results, r)
+			}
+		}
+	}
+	return results, nil
 }
 
 func (l *Logger) Dir() string {
