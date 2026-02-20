@@ -154,8 +154,7 @@ func (cb *CircuitBreaker) Allow() bool {
 		return false
 
 	case CBRecovering:
-		// Gradual ramp-up: thresholds are powers of 2 → 1, 2, 4.
-		// Allow the next request if successes < current threshold.
+		// Allow requests through; RecordSuccess tracks ramp progress (4 successes → CLOSED).
 		return true
 
 	default:
