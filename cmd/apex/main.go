@@ -37,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(redactCmd)
 	rootCmd.AddCommand(traceCmd)
 	rootCmd.AddCommand(metricsCmd)
+	rootCmd.AddCommand(gcCmd)
 }
 
 func main() {
