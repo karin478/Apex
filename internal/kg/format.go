@@ -96,8 +96,7 @@ func FormatQueryResult(center *Entity, entities []*Entity, rels []*Relationship)
 		var rt RelType
 		for _, r := range rels {
 			if (r.FromID == center.ID && r.ToID == e.ID) ||
-				(r.ToID == center.ID && r.FromID == e.ID) ||
-				(r.FromID == e.ID) || (r.ToID == e.ID) {
+				(r.ToID == center.ID && r.FromID == e.ID) {
 				rt = r.RelType
 				break
 			}
