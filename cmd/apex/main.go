@@ -50,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(eventCmd)
 	rootCmd.AddCommand(migrationCmd)
 	rootCmd.AddCommand(datasourceCmd)
+	rootCmd.AddCommand(credentialCmd)
 }
 
 func main() {
