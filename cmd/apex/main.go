@@ -43,6 +43,7 @@ func init() {
 	rootCmd.AddCommand(auditPolicyCmd)
 	rootCmd.AddCommand(dashboardCmd)
 	rootCmd.AddCommand(artifactCmd)
+	rootCmd.AddCommand(kgCmd)
 }
 
 func main() {
