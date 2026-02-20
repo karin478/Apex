@@ -297,9 +297,8 @@ func (r *Registry) List() []*ConnectorSpec {
 // BreakerStatus returns the CBStatus for the named connector's circuit breaker.
 func (r *Registry) BreakerStatus(name string) (*CBStatus, bool) {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	cb, ok := r.breakers[name]
+	r.mu.RUnlock()
 	if !ok {
 		return nil, false
 	}

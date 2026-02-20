@@ -188,19 +188,17 @@ func TestCircuitBreakerRecovering(t *testing.T) {
 	cb.RecordSuccess()
 	assert.Equal(t, CBRecovering, cb.Status().State)
 
-	// Gradual ramp-up: successes starts at 0, needs to reach 1, 2, 4.
-	// After 1st success in RECOVERING → successes=1 (threshold 1 met, allow next).
-	assert.True(t, cb.Allow()) // allowed (successes=0 < threshold 1)
-	cb.RecordSuccess()         // successes=1
+	// RECOVERING requires 4 consecutive successes before transitioning to CLOSED.
+	assert.True(t, cb.Allow()) // RECOVERING allows requests
+	cb.RecordSuccess()         // 1st success (1/4)
 
-	assert.True(t, cb.Allow()) // allowed (successes=1 < threshold 2)
-	cb.RecordSuccess()         // successes=2
+	assert.True(t, cb.Allow()) // RECOVERING allows requests
+	cb.RecordSuccess()         // 2nd success (2/4)
 
-	// Need 2 more successes to reach threshold 4.
 	assert.True(t, cb.Allow())
-	cb.RecordSuccess() // successes=3
+	cb.RecordSuccess() // 3rd success (3/4)
 	assert.True(t, cb.Allow())
-	cb.RecordSuccess() // successes=4 → CLOSED
+	cb.RecordSuccess() // 4th success (4/4) → CLOSED
 
 	assert.Equal(t, CBClosed, cb.Status().State)
 	assert.Equal(t, 0, cb.Status().Failures)
