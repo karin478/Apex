@@ -43,8 +43,9 @@
 | 27 | Memory Import/Export | `2026-02-20-phase27-memory-import-export-design.md` | Done |
 | 28 | Artifact Lineage | `2026-02-20-phase28-artifact-lineage-design.md` | Done |
 | 29 | Rate Limit Groups | `2026-02-20-phase29-rate-limit-groups-design.md` | Done |
+| 30 | Memory Auto-Cleanup | `2026-02-20-phase30-memory-auto-cleanup-design.md` | Done |
 
-## Current: Phase 30 — TBD
+## Current: Phase 31 — TBD
 
 No phase in progress.
 
@@ -52,8 +53,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 35 packages |
-| E2E tests (mock) | `make e2e` | 87 tests, all CLI commands |
+| Unit tests | `make test` | 36 packages |
+| E2E tests (mock) | `make e2e` | 90 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -93,3 +94,4 @@ No phase in progress.
 | `internal/aggregator` | Aggregation pipeline with summarize, merge, and reduce strategies |
 | `internal/memport` | Memory import/export with JSON serialization and merge strategies |
 | `internal/ratelimit` | Token bucket rate limiter with named groups for shared rate limiting |
+| `internal/memclean` | Rule-based memory auto-cleanup with capacity threshold, stale detection, and exempt categories |
