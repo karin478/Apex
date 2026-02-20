@@ -45,8 +45,9 @@
 | 29 | Rate Limit Groups | `2026-02-20-phase29-rate-limit-groups-design.md` | Done |
 | 30 | Memory Auto-Cleanup | `2026-02-20-phase30-memory-auto-cleanup-design.md` | Done |
 | 31 | Connector Framework | `2026-02-20-phase31-connector-framework-design.md` | Done |
+| 32 | Async Event Runtime | `2026-02-20-phase32-async-event-runtime-design.md` | Done |
 
-## Current: Phase 32 — TBD
+## Current: Phase 33 — TBD
 
 No phase in progress.
 
@@ -54,8 +55,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 37 packages |
-| E2E tests (mock) | `make e2e` | 93 tests, all CLI commands |
+| Unit tests | `make test` | 38 packages |
+| E2E tests (mock) | `make e2e` | 96 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -97,3 +98,4 @@ No phase in progress.
 | `internal/ratelimit` | Token bucket rate limiter with named groups for shared rate limiting |
 | `internal/memclean` | Rule-based memory auto-cleanup with capacity threshold, stale detection, and exempt categories |
 | `internal/connector` | Tool connector framework with YAML spec loading, 4-state circuit breaker, and registry |
+| `internal/event` | Async event runtime with priority queue (URGENT/NORMAL/LONG_RUNNING) and handler router |
