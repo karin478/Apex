@@ -51,8 +51,9 @@
 | 35 | Credential Injector | `2026-02-20-phase35-credential-injector-design.md` | Done |
 | 36 | Context Paging Tool | `2026-02-20-phase36-context-paging-design.md` | Done |
 | 37 | Mode Selector | `2026-02-20-phase37-mode-selector-design.md` | Done |
+| 38 | Progress Tracker | `2026-02-20-phase38-progress-tracker-design.md` | Done |
 
-## Current: Phase 38 — TBD
+## Current: Phase 39 — TBD
 
 No phase in progress.
 
@@ -60,8 +61,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 43 packages |
-| E2E tests (mock) | `make e2e` | 111 tests, all CLI commands |
+| Unit tests | `make test` | 44 packages |
+| E2E tests (mock) | `make e2e` | 114 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -109,3 +110,4 @@ No phase in progress.
 | `internal/credinjector` | Zero-trust credential injection with placeholder refs, vault loading, inject/scrub, and error path protection |
 | `internal/paging` | On-demand artifact content paging with line extraction, token estimation, and per-task budget enforcement |
 | `internal/mode` | Execution mode selector with 5 modes (NORMAL/URGENT/EXPLORATORY/BATCH/LONG_RUNNING) and complexity-based auto-selection |
+| `internal/progress` | Structured task progress tracking with Start/Update/Complete/Fail lifecycle and percent clamping |
