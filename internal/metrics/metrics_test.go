@@ -91,3 +91,24 @@ func TestMetricJSON(t *testing.T) {
 	assert.Equal(t, float64(5), m.Value)
 	assert.Equal(t, "success", m.Labels["outcome"])
 }
+
+func TestFormatHuman(t *testing.T) {
+	metrics := []Metric{
+		{Name: "apex_runs_total", Value: 5, Timestamp: "2026-02-20T00:00:00Z"},
+		{Name: "apex_health_level", Value: 0, Labels: map[string]string{"level": "GREEN"}, Timestamp: "2026-02-20T00:00:00Z"},
+	}
+	output := FormatHuman(metrics)
+	assert.Contains(t, output, "apex_runs_total")
+	assert.Contains(t, output, "5")
+	assert.Contains(t, output, "GREEN")
+}
+
+func TestFormatJSONL(t *testing.T) {
+	metrics := []Metric{
+		{Name: "apex_runs_total", Value: 3, Timestamp: "2026-02-20T00:00:00Z"},
+	}
+	output, err := FormatJSONL(metrics)
+	require.NoError(t, err)
+	assert.Contains(t, output, `"name":"apex_runs_total"`)
+	assert.Contains(t, output, `"value":3`)
+}
