@@ -47,6 +47,7 @@ func init() {
 	rootCmd.AddCommand(aggregateCmd)
 	rootCmd.AddCommand(ratelimitCmd)
 	rootCmd.AddCommand(connectorCmd)
+	rootCmd.AddCommand(eventCmd)
 }
 
 func main() {
