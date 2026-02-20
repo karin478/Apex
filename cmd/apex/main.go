@@ -42,6 +42,7 @@ func init() {
 	rootCmd.AddCommand(diffCmd)
 	rootCmd.AddCommand(auditPolicyCmd)
 	rootCmd.AddCommand(dashboardCmd)
+	rootCmd.AddCommand(artifactCmd)
 }
 
 func main() {
