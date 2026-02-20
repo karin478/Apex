@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -130,6 +132,43 @@ func (t *PolicyTracker) saveState(files []PolicyFile) error {
 
 	statePath := filepath.Join(t.stateDir, "policy-state.json")
 	return os.WriteFile(statePath, data, 0o644)
+}
+
+// FormatPolicyChanges renders changes as a human-readable table.
+func FormatPolicyChanges(changes []PolicyChange) string {
+	if len(changes) == 0 {
+		return "No policy changes detected.\n"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("=== Policy Change History ===\n\n")
+	sb.WriteString(fmt.Sprintf("%-22s | %-30s | %-13s | %-13s\n",
+		"TIME", "FILE", "OLD", "NEW"))
+	sb.WriteString(strings.Repeat("-", 82) + "\n")
+
+	for _, c := range changes {
+		oldDisplay := truncateChecksum(c.OldChecksum)
+		if c.OldChecksum == "" {
+			oldDisplay = "(new)"
+		}
+		newDisplay := truncateChecksum(c.NewChecksum)
+
+		sb.WriteString(fmt.Sprintf("%-22s | %-30s | %-13s| %-13s\n",
+			c.Timestamp,
+			filepath.Base(c.File),
+			oldDisplay,
+			newDisplay))
+	}
+
+	return sb.String()
+}
+
+// truncateChecksum returns the first 10 characters of a checksum followed by "...".
+func truncateChecksum(checksum string) string {
+	if len(checksum) > 10 {
+		return checksum[:10] + "..."
+	}
+	return checksum
 }
 
 // fileChecksum computes the SHA-256 checksum of the file at the given path.

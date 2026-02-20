@@ -3,6 +3,7 @@ package audit
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -112,4 +113,45 @@ func TestPolicyTrackerSkipsMissingFile(t *testing.T) {
 	changes, err := tracker.Check([]string{"/nonexistent/path/config.yaml"})
 	require.NoError(t, err)
 	assert.Empty(t, changes, "expected no changes for missing files")
+}
+
+// TestFormatPolicyChangesEmpty verifies that nil/empty changes produce
+// the "No policy changes detected." message.
+func TestFormatPolicyChangesEmpty(t *testing.T) {
+	result := FormatPolicyChanges(nil)
+	assert.Equal(t, "No policy changes detected.\n", result)
+
+	result = FormatPolicyChanges([]PolicyChange{})
+	assert.Equal(t, "No policy changes detected.\n", result)
+}
+
+// TestFormatPolicyChangesWithData verifies that a non-empty change list
+// renders a table with the header, file basename, and truncated checksums.
+func TestFormatPolicyChangesWithData(t *testing.T) {
+	changes := []PolicyChange{
+		{
+			File:        "/etc/configs/config.yaml",
+			OldChecksum: "aabbccddeeff112233445566",
+			NewChecksum: "5544332211ffeeddccbbaa99",
+			Timestamp:   "2026-02-20T10:00:00Z",
+		},
+	}
+
+	result := FormatPolicyChanges(changes)
+
+	assert.True(t, strings.Contains(result, "Policy Change History"),
+		"expected output to contain header")
+	assert.True(t, strings.Contains(result, "config.yaml"),
+		"expected output to contain file basename")
+	assert.True(t, strings.Contains(result, "aabbccddee..."),
+		"expected old checksum to be truncated to 10 chars + ...")
+	assert.True(t, strings.Contains(result, "5544332211..."),
+		"expected new checksum to be truncated to 10 chars + ...")
+	// Verify full checksums are NOT present
+	assert.False(t, strings.Contains(result, "aabbccddeeff112233445566"),
+		"full old checksum should not appear in output")
+
+	// Verify the full path is NOT displayed (only basename)
+	assert.False(t, strings.Contains(result, "/etc/configs/config.yaml"),
+		"full file path should not appear; only basename expected")
 }
