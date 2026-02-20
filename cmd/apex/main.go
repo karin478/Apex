@@ -49,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(connectorCmd)
 	rootCmd.AddCommand(eventCmd)
 	rootCmd.AddCommand(migrationCmd)
+	rootCmd.AddCommand(datasourceCmd)
 }
 
 func main() {
