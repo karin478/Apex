@@ -14,6 +14,7 @@ import (
 
 var artifactRunFilter string
 var artifactGCDryRun bool
+var artifactImpactFormat string
 
 var artifactCmd = &cobra.Command{
 	Use:   "artifact",
@@ -39,10 +40,25 @@ var artifactGCCmd = &cobra.Command{
 	RunE:  gcArtifacts,
 }
 
+var artifactImpactCmd = &cobra.Command{
+	Use:   "impact <hash>",
+	Short: "Show downstream impact of an artifact",
+	Args:  cobra.ExactArgs(1),
+	RunE:  impactArtifact,
+}
+
+var artifactDepsCmd = &cobra.Command{
+	Use:   "deps <hash>",
+	Short: "Show direct dependencies of an artifact",
+	Args:  cobra.ExactArgs(1),
+	RunE:  depsArtifact,
+}
+
 func init() {
 	artifactListCmd.Flags().StringVar(&artifactRunFilter, "run", "", "Filter by run ID")
 	artifactGCCmd.Flags().BoolVar(&artifactGCDryRun, "dry-run", false, "Preview without deleting")
-	artifactCmd.AddCommand(artifactListCmd, artifactInfoCmd, artifactGCCmd)
+	artifactImpactCmd.Flags().StringVar(&artifactImpactFormat, "format", "", "Output format (json)")
+	artifactCmd.AddCommand(artifactListCmd, artifactInfoCmd, artifactGCCmd, artifactImpactCmd, artifactDepsCmd)
 }
 
 func listArtifacts(cmd *cobra.Command, args []string) error {
@@ -141,6 +157,45 @@ func gcArtifacts(cmd *cobra.Command, args []string) error {
 		removed++
 	}
 	fmt.Printf("Removed %d orphan artifact(s).\n", removed)
+	return nil
+}
+
+func impactArtifact(cmd *cobra.Command, args []string) error {
+	home, _ := os.UserHomeDir()
+	artDir := filepath.Join(home, ".apex", "artifacts")
+
+	lg, err := artifact.NewLineageGraph(artDir)
+	if err != nil {
+		return fmt.Errorf("artifact impact: %w", err)
+	}
+
+	result := lg.Impact(args[0])
+
+	if artifactImpactFormat == "json" {
+		fmt.Println(artifact.FormatImpactJSON(result))
+	} else {
+		fmt.Println(artifact.FormatImpact(result))
+	}
+	return nil
+}
+
+func depsArtifact(cmd *cobra.Command, args []string) error {
+	home, _ := os.UserHomeDir()
+	artDir := filepath.Join(home, ".apex", "artifacts")
+
+	lg, err := artifact.NewLineageGraph(artDir)
+	if err != nil {
+		return fmt.Errorf("artifact deps: %w", err)
+	}
+
+	deps := lg.DirectDeps(args[0])
+	if len(deps) == 0 {
+		fmt.Printf("No dependencies for %s\n", args[0])
+		return nil
+	}
+	for _, d := range deps {
+		fmt.Println(d)
+	}
 	return nil
 }
 
