@@ -27,6 +27,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/retry"
 	"github.com/lyndonlyu/apex/internal/sandbox"
 	"github.com/lyndonlyu/apex/internal/snapshot"
+	"github.com/lyndonlyu/apex/internal/trace"
 	"github.com/spf13/cobra"
 )
 
@@ -72,6 +73,10 @@ func runTask(cmd *cobra.Command, args []string) error {
 		fmt.Println("[HEALTH] System health CRITICAL — run 'apex doctor' to diagnose")
 		return nil
 	}
+
+	// Create root trace context
+	tc := trace.NewTrace()
+	fmt.Printf("[trace: %s]\n", tc.TraceID[:8])
 
 	// Classify risk
 	risk := governance.Classify(task)
@@ -327,13 +332,15 @@ func runTask(cmd *cobra.Command, args []string) error {
 				nodeErr = "kill switch activated"
 			}
 			logger.Log(audit.Entry{
-				Task:         fmt.Sprintf("[%s] %s", n.ID, n.Task),
-				RiskLevel:    risk.String(),
-				Outcome:      nodeOutcome,
-				Duration:     duration,
-				Model:        cfg.Claude.Model,
-				Error:        nodeErr,
-				SandboxLevel: sb.Level().String(),
+				Task:           fmt.Sprintf("[%s] %s", n.ID, n.Task),
+				RiskLevel:      risk.String(),
+				Outcome:        nodeOutcome,
+				Duration:       duration,
+				Model:          cfg.Claude.Model,
+				Error:          nodeErr,
+				SandboxLevel:   sb.Level().String(),
+				TraceID:        tc.TraceID,
+				ParentActionID: tc.ParentActionID,
 			})
 		}
 	}
@@ -397,6 +404,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 		NodeCount:  len(d.Nodes),
 		DurationMs: duration.Milliseconds(),
 		Outcome:    outcome,
+		TraceID:    tc.TraceID,
 		Nodes:      nodeResults,
 	}
 
