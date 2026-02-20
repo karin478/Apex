@@ -44,6 +44,7 @@ func init() {
 	rootCmd.AddCommand(dashboardCmd)
 	rootCmd.AddCommand(artifactCmd)
 	rootCmd.AddCommand(kgCmd)
+	rootCmd.AddCommand(aggregateCmd)
 }
 
 func main() {
