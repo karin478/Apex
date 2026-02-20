@@ -41,8 +41,9 @@
 | 25 | Knowledge Graph | `2026-02-20-phase25-knowledge-graph-design.md` | Done |
 | 26 | Aggregation Pipeline | `2026-02-20-phase26-aggregation-pipeline-design.md` | Done |
 | 27 | Memory Import/Export | `2026-02-20-phase27-memory-import-export-design.md` | Done |
+| 28 | Artifact Lineage | `2026-02-20-phase28-artifact-lineage-design.md` | Done |
 
-## Current: Phase 28 — TBD
+## Current: Phase 29 — TBD
 
 No phase in progress.
 
@@ -51,7 +52,7 @@ No phase in progress.
 | Suite | Command | Coverage |
 |-------|---------|----------|
 | Unit tests | `make test` | 34 packages |
-| E2E tests (mock) | `make e2e` | 81 tests, all CLI commands |
+| E2E tests (mock) | `make e2e` | 84 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
