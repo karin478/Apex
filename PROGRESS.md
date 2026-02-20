@@ -47,8 +47,9 @@
 | 31 | Connector Framework | `2026-02-20-phase31-connector-framework-design.md` | Done |
 | 32 | Async Event Runtime | `2026-02-20-phase32-async-event-runtime-design.md` | Done |
 | 33 | Schema Migration | `2026-02-20-phase33-schema-migration-design.md` | Done |
+| 34 | External Data Puller | `2026-02-20-phase34-external-data-puller-design.md` | Done |
 
-## Current: Phase 34 — TBD
+## Current: Phase 35 — TBD
 
 No phase in progress.
 
@@ -56,8 +57,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 39 packages |
-| E2E tests (mock) | `make e2e` | 99 tests, all CLI commands |
+| Unit tests | `make test` | 40 packages |
+| E2E tests (mock) | `make e2e` | 102 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -101,3 +102,4 @@ No phase in progress.
 | `internal/connector` | Tool connector framework with YAML spec loading, 4-state circuit breaker, and registry |
 | `internal/event` | Async event runtime with priority queue (URGENT/NORMAL/LONG_RUNNING) and handler router |
 | `internal/migration` | Schema migration with PRAGMA user_version tracking, sequential registry, and pre-migration backup |
+| `internal/datapuller` | External data puller with YAML spec loading, HTTP pull with auth, and JSON path transform |
