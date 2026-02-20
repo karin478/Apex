@@ -38,8 +38,9 @@
 | 22 | Policy Change Audit | `2026-02-20-phase22-policy-change-audit-design.md` | Done |
 | 23 | System Dashboard | `2026-02-20-phase23-dashboard-design.md` | Done |
 | 24 | Content-Addressed Artifact Storage | `2026-02-20-phase24-artifact-storage-design.md` | Done |
+| 25 | Knowledge Graph | `2026-02-20-phase25-knowledge-graph-design.md` | Done |
 
-## Current: Phase 25 — TBD
+## Current: Phase 26 — TBD
 
 No phase in progress.
 
@@ -47,8 +48,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 31 packages |
-| E2E tests (mock) | `make e2e` | 72 tests, all CLI commands |
+| Unit tests | `make test` | 32 packages |
+| E2E tests (mock) | `make e2e` | 75 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -84,3 +85,4 @@ No phase in progress.
 | `internal/hypothesis` | Hypothesis board with propose/challenge/confirm/reject lifecycle |
 | `internal/dashboard` | System status dashboard aggregating health, runs, metrics, audit |
 | `internal/artifact` | Content-addressed artifact storage with SHA-256 dedup and orphan GC |
+| `internal/kg` | Knowledge graph with entity-relationship storage, BFS traversal, and JSON persistence |
