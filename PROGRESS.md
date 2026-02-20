@@ -37,8 +37,9 @@
 | 21 | Run Manifest Diffing | `2026-02-20-phase21-run-diff-design.md` | Done |
 | 22 | Policy Change Audit | `2026-02-20-phase22-policy-change-audit-design.md` | Done |
 | 23 | System Dashboard | `2026-02-20-phase23-dashboard-design.md` | Done |
+| 24 | Content-Addressed Artifact Storage | `2026-02-20-phase24-artifact-storage-design.md` | Done |
 
-## Current: Phase 24 — TBD
+## Current: Phase 25 — TBD
 
 No phase in progress.
 
@@ -46,8 +47,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 30 packages |
-| E2E tests (mock) | `make e2e` | 69 tests, all CLI commands |
+| Unit tests | `make test` | 31 packages |
+| E2E tests (mock) | `make e2e` | 72 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -82,3 +83,4 @@ No phase in progress.
 | `internal/gc` | Garbage collection for old runs, audit logs, and snapshots |
 | `internal/hypothesis` | Hypothesis board with propose/challenge/confirm/reject lifecycle |
 | `internal/dashboard` | System status dashboard aggregating health, runs, metrics, audit |
+| `internal/artifact` | Content-addressed artifact storage with SHA-256 dedup and orphan GC |
