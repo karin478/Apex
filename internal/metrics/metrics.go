@@ -1,7 +1,9 @@
 package metrics
 
 import (
+	"math"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/lyndonlyu/apex/internal/audit"
@@ -35,7 +37,7 @@ func (c *Collector) Collect() ([]Metric, error) {
 	// Run metrics from manifest store
 	runsDir := filepath.Join(c.baseDir, "runs")
 	store := manifest.NewStore(runsDir)
-	manifests, err := store.Recent(10000) // all
+	manifests, err := store.Recent(math.MaxInt) // all
 	if err == nil {
 		metrics = append(metrics, c.runMetrics(manifests, now)...)
 	}
@@ -77,7 +79,7 @@ func (c *Collector) runMetrics(manifests []*manifest.Manifest, now string) []Met
 		totalNodes += m.NodeCount
 		totalDuration += m.DurationMs
 		for _, n := range m.Nodes {
-			if n.Status == "failed" {
+			if strings.EqualFold(n.Status, "failed") {
 				failedNodes++
 			}
 		}
@@ -111,7 +113,7 @@ func (c *Collector) runMetrics(manifests []*manifest.Manifest, now string) []Met
 func (c *Collector) auditMetrics(logger *audit.Logger, now string) []Metric {
 	var metrics []Metric
 
-	records, err := logger.Recent(100000) // all
+	records, err := logger.Recent(math.MaxInt) // all
 	if err == nil {
 		metrics = append(metrics, Metric{
 			Name: "apex_audit_entries_total", Value: float64(len(records)), Timestamp: now,
