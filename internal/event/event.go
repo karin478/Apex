@@ -7,8 +7,13 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 )
+
+// idCounter is an atomic counter appended to event IDs to guarantee uniqueness
+// even when multiple goroutines create events within the same nanosecond.
+var idCounter uint64
 
 // Priority represents the urgency level of an event.
 type Priority int
@@ -57,13 +62,17 @@ type QueueStats struct {
 }
 
 // NewEvent creates an Event with a unique ID and the current timestamp.
+// The ID combines the current nanosecond timestamp with an atomic counter
+// to avoid collisions under concurrent usage.
 func NewEvent(eventType string, priority Priority, payload string) Event {
+	now := time.Now()
+	seq := atomic.AddUint64(&idCounter, 1)
 	return Event{
-		ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+		ID:        fmt.Sprintf("%d-%d", now.UnixNano(), seq),
 		Type:      eventType,
 		Priority:  priority,
 		Payload:   payload,
-		CreatedAt: time.Now(),
+		CreatedAt: now,
 	}
 }
 
