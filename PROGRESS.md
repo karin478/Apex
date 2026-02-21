@@ -60,8 +60,9 @@
 | 44 | Resource QoS | `2026-02-21-phase44-resource-qos-design.md` | Done |
 | 45 | Task Template System | `2026-02-21-phase45-task-template-design.md` | Done |
 | 46 | Run History Analytics | `2026-02-21-phase46-run-analytics-design.md` | Done |
+| 47 | Environment Precheck | `2026-02-21-phase47-env-precheck-design.md` | Done |
 
-## Current: Phase 47 — TBD
+## Current: Phase 48 — TBD
 
 No phase in progress.
 
@@ -69,8 +70,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 51 packages |
-| E2E tests (mock) | `make e2e` | 133 tests, all CLI commands |
+| Unit tests | `make test` | 52 packages |
+| E2E tests (mock) | `make e2e` | 135 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -126,3 +127,4 @@ No phase in progress.
 | `internal/qos` | Priority-based resource QoS with slot reservation, 4-step allocation, and URGENT borrowing |
 | `internal/template` | Reusable DAG templates with YAML loading, {{.VarName}} substitution, and Registry |
 | `internal/analytics` | Run history analytics with summary, duration stats (P50/P90), and failure pattern detection |
+| `internal/precheck` | Environment precheck with pluggable Check interface, DirCheck/FileCheck/BinaryCheck, and Runner |
