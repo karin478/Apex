@@ -60,6 +60,7 @@ func init() {
 	rootCmd.AddCommand(statedbCmd)
 	rootCmd.AddCommand(qosCmd)
 	rootCmd.AddCommand(templateCmd)
+	rootCmd.AddCommand(analyticsCmd)
 }
 
 func main() {
