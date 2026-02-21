@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -132,7 +131,7 @@ func (d *DB) DeleteState(key string) error {
 
 // ListState returns all state entries sorted by key.
 func (d *DB) ListState() ([]StateEntry, error) {
-	rows, err := d.db.Query(`SELECT key, value, updated_at FROM state`)
+	rows, err := d.db.Query(`SELECT key, value, updated_at FROM state ORDER BY key`)
 	if err != nil {
 		return nil, fmt.Errorf("statedb: list state: %w", err)
 	}
@@ -149,10 +148,6 @@ func (d *DB) ListState() ([]StateEntry, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("statedb: rows state: %w", err)
 	}
-
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Key < entries[j].Key
-	})
 	return entries, nil
 }
 
@@ -224,11 +219,14 @@ func (d *DB) UpdateRunStatus(id, status string) error {
 // descending. If limit is 0, all records are returned.
 func (d *DB) ListRuns(limit int) ([]RunRecord, error) {
 	query := `SELECT id, status, task_count, started_at, ended_at FROM runs ORDER BY started_at DESC`
-	if limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", limit)
-	}
 
-	rows, err := d.db.Query(query)
+	var rows *sql.Rows
+	var err error
+	if limit > 0 {
+		rows, err = d.db.Query(query+" LIMIT ?", limit)
+	} else {
+		rows, err = d.db.Query(query)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("statedb: list runs: %w", err)
 	}
