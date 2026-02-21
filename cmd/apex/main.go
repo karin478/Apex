@@ -56,6 +56,7 @@ func init() {
 	rootCmd.AddCommand(progressCmd)
 	rootCmd.AddCommand(profileCmd)
 	rootCmd.AddCommand(notifyCmd)
+	rootCmd.AddCommand(failcloseCmd)
 }
 
 func main() {
