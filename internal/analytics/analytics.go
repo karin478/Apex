@@ -81,7 +81,11 @@ func ComputeDuration(runs []statedb.RunRecord) DurationStats {
 		if err != nil {
 			continue
 		}
-		durations = append(durations, end.Sub(start).Seconds())
+		dur := end.Sub(start).Seconds()
+		if dur <= 0 {
+			continue
+		}
+		durations = append(durations, dur)
 	}
 
 	if len(durations) == 0 {

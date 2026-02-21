@@ -131,6 +131,37 @@ func TestGenerateReport(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestComputeDurationSkipsZeroNegative(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	runs := []statedb.RunRecord{
+		// Valid: 10s duration
+		makeRun("r1", "COMPLETED", 0, 10),
+		// Zero duration (EndedAt == StartedAt) — should be skipped
+		{
+			ID:        "r2",
+			Status:    "COMPLETED",
+			TaskCount: 1,
+			StartedAt: base.Format(time.RFC3339),
+			EndedAt:   base.Format(time.RFC3339),
+		},
+		// Negative duration (EndedAt before StartedAt) — should be skipped
+		{
+			ID:        "r3",
+			Status:    "COMPLETED",
+			TaskCount: 1,
+			StartedAt: base.Add(30 * time.Second).Format(time.RFC3339),
+			EndedAt:   base.Format(time.RFC3339),
+		},
+	}
+
+	d := ComputeDuration(runs)
+	// Only r1 should be counted.
+	assert.Equal(t, 1, d.Count)
+	assert.InDelta(t, 10.0, d.MinSecs, 1e-9)
+	assert.InDelta(t, 10.0, d.MaxSecs, 1e-9)
+}
+
 func TestComputeDurationSkipsInvalid(t *testing.T) {
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
