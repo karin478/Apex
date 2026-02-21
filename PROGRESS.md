@@ -56,8 +56,9 @@
 | 40 | Notification System | `2026-02-20-phase40-notification-system-design.md` | Done |
 | 41 | Fail-Closed Gate | `2026-02-21-phase41-fail-closed-gate-design.md` | Done |
 | 42 | Runtime State DB | `2026-02-21-phase42-runtime-state-db-design.md` | Done |
+| 43 | DAG State Machine Extension | `2026-02-21-phase43-dag-state-extension-design.md` | Done |
 
-## Current: Phase 43 — TBD
+## Current: Phase 44 — TBD
 
 No phase in progress.
 
