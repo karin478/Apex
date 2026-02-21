@@ -55,8 +55,9 @@
 | 39 | Configuration Profile Manager | `2026-02-20-phase39-config-profile-design.md` | Done |
 | 40 | Notification System | `2026-02-20-phase40-notification-system-design.md` | Done |
 | 41 | Fail-Closed Gate | `2026-02-21-phase41-fail-closed-gate-design.md` | Done |
+| 42 | Runtime State DB | `2026-02-21-phase42-runtime-state-db-design.md` | Done |
 
-## Current: Phase 42 — TBD
+## Current: Phase 43 — TBD
 
 No phase in progress.
 
@@ -64,8 +65,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 47 packages |
-| E2E tests (mock) | `make e2e` | 123 tests, all CLI commands |
+| Unit tests | `make test` | 48 packages |
+| E2E tests (mock) | `make e2e` | 126 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -117,3 +118,4 @@ No phase in progress.
 | `internal/profile` | Named configuration profiles with registry, YAML loading, and environment switching (dev/staging/prod) |
 | `internal/notify` | Event-driven notification with Channel interface, rule-based routing, and multi-channel dispatch |
 | `internal/failclose` | Fail-closed safety gate with pluggable conditions, health/killswitch checks, and MustPass enforcement |
+| `internal/statedb` | Centralized SQLite WAL runtime state DB with key-value state store and run record persistence |
