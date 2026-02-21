@@ -27,6 +27,14 @@ func (s Status) String() string {
 		return "COMPLETED"
 	case Failed:
 		return "FAILED"
+	case Blocked:
+		return "BLOCKED"
+	case Suspended:
+		return "SUSPENDED"
+	case Cancelled:
+		return "CANCELLED"
+	case Skipped:
+		return "SKIPPED"
 	default:
 		return "UNKNOWN"
 	}
@@ -202,7 +210,7 @@ func (d *DAG) IsComplete() bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for _, n := range d.Nodes {
-		if n.Status != Completed && n.Status != Failed {
+		if !IsTerminal(n.Status) {
 			return false
 		}
 	}
