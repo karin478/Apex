@@ -58,6 +58,7 @@ func init() {
 	rootCmd.AddCommand(notifyCmd)
 	rootCmd.AddCommand(failcloseCmd)
 	rootCmd.AddCommand(statedbCmd)
+	rootCmd.AddCommand(qosCmd)
 }
 
 func main() {
