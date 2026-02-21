@@ -187,11 +187,11 @@ func (d *DAG) MarkFailed(id string, errMsg string) {
 	d.cascadeFail(id)
 }
 
-// cascadeFail recursively marks all pending nodes that depend (directly or
+// cascadeFail recursively marks all pending/blocked nodes that depend (directly or
 // transitively) on the failed node as Failed. Must be called with mu held.
 func (d *DAG) cascadeFail(failedID string) {
 	for _, n := range d.Nodes {
-		if n.Status != Pending {
+		if n.Status != Pending && n.Status != Blocked {
 			continue
 		}
 		for _, dep := range n.Depends {
