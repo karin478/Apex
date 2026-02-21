@@ -8,7 +8,11 @@ import (
 	"strings"
 
 	"github.com/lyndonlyu/apex/internal/audit"
+	"github.com/lyndonlyu/apex/internal/filelock"
 	"github.com/lyndonlyu/apex/internal/health"
+	"github.com/lyndonlyu/apex/internal/outbox"
+	"github.com/lyndonlyu/apex/internal/statedb"
+	"github.com/lyndonlyu/apex/internal/writerq"
 	"github.com/spf13/cobra"
 )
 
@@ -107,7 +111,54 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 4. Health evaluation
+	// 5. Lock status
+	fmt.Print("Lock status........ ")
+	runtimeDir := filepath.Join(home, ".apex", "runtime")
+	globalLockPath := filepath.Join(runtimeDir, "apex.lock")
+	if filelock.IsStale(globalLockPath) {
+		meta, _ := filelock.ReadMeta(globalLockPath)
+		fmt.Printf("STALE (PID %d no longer running)\n", meta.PID)
+	} else if meta, metaErr := filelock.ReadMeta(globalLockPath); metaErr == nil {
+		fmt.Printf("held by PID %d since %s\n", meta.PID, meta.Timestamp)
+	} else {
+		fmt.Println("FREE")
+	}
+
+	// 6. Action outbox health
+	fmt.Print("Action outbox...... ")
+	walPath := filepath.Join(runtimeDir, "actions_wal.jsonl")
+	if _, statErr := os.Stat(walPath); statErr == nil {
+		sdb, sdbOpenErr := statedb.Open(filepath.Join(runtimeDir, "runtime.db"))
+		if sdbOpenErr == nil {
+			defer sdb.Close()
+			wq := writerq.New(sdb.RawDB())
+			defer wq.Close()
+			ob, obInitErr := outbox.New(walPath, sdb.RawDB(), wq)
+			if obInitErr == nil {
+				orphans, _ := ob.Reconcile()
+				if len(orphans) == 0 {
+					fmt.Println("OK (no orphan actions)")
+				} else {
+					fmt.Printf("WARNING: %d orphan STARTED action(s)\n", len(orphans))
+					for _, entry := range orphans {
+						idShort := entry.ActionID
+						if len(idShort) > 8 {
+							idShort = idShort[:8]
+						}
+						fmt.Printf("  %s: %s\n", idShort, entry.Task)
+					}
+				}
+			} else {
+				fmt.Printf("ERROR: %v\n", obInitErr)
+			}
+		} else {
+			fmt.Printf("ERROR: %v\n", sdbOpenErr)
+		}
+	} else {
+		fmt.Println("SKIP (no WAL file)")
+	}
+
+	// 7. Health evaluation
 	baseDir := filepath.Join(home, ".apex")
 	report := health.Evaluate(baseDir)
 
