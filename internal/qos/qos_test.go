@@ -134,7 +134,31 @@ func TestAllocateUrgentAlways(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 7. TestUsage
+// 7. TestAllocateBorrowFromLowerPriority (Step 4 direct coverage)
+// ---------------------------------------------------------------------------
+
+func TestAllocateBorrowFromLowerPriority(t *testing.T) {
+	// Pool=4, HIGH reserved=2 → unreserved=2
+	pool := NewSlotPool(4)
+	require.NoError(t, pool.AddReservation(Reservation{Priority: "HIGH", Reserved: 2}))
+
+	// Fill the unreserved pool with NORMAL.
+	assert.True(t, pool.Allocate("NORMAL"))
+	assert.True(t, pool.Allocate("NORMAL"))
+
+	// NORMAL (priority=2) cannot borrow from HIGH (priority=1) reserved slots.
+	assert.False(t, pool.Allocate("NORMAL"))
+
+	// URGENT (priority=0) can borrow from HIGH's unused reserved (Step 4).
+	assert.True(t, pool.Allocate("URGENT"))
+	assert.True(t, pool.Allocate("URGENT"))
+
+	// Pool is fully utilized now (4/4).
+	assert.Equal(t, 0, pool.Available())
+}
+
+// ---------------------------------------------------------------------------
+// 8. TestUsage
 // ---------------------------------------------------------------------------
 
 func TestUsage(t *testing.T) {
