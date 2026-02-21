@@ -62,25 +62,27 @@
 | 46 | Run History Analytics | `2026-02-21-phase46-run-analytics-design.md` | Done |
 | 47 | Environment Precheck | `2026-02-21-phase47-env-precheck-design.md` | Done |
 | 48 | Data Reliability Foundation | `2026-02-21-phase48-data-reliability-design.md` | Done |
+| 49 | Correctness & Verification Foundation | `2026-02-21-phase49-correctness-verification-design.md` | Done |
 
-## Current: Phase 48 — Data Reliability Foundation ✅
+## Current: Phase 49 — Correctness & Verification Foundation ✅
 
-Completed 2026-02-21. Three interdependent components forming the data reliability foundation:
+Completed 2026-02-21. Four components forming the correctness verification layer:
 
-1. **Layered Locks** (`internal/filelock/`) — flock-based file locks with ordering enforcement (8 tests)
-2. **DB Writer Queue** (`internal/writerq/`) — single-writer goroutine with batch merging (5 tests)
-3. **Action Outbox** (`internal/outbox/`) — 7-step WAL protocol with startup reconciliation (8 tests)
-4. **statedb integration** — optional queue routing for serialized writes (4 new tests)
-5. **run.go integration** — outbox + locks wired into execution pipeline
-6. **doctor integration** — lock status + outbox health checks
-7. **E2E tests** — 4 new integration tests
+1. **DAG State Completion** (`internal/dag/states.go`) — 7 new lifecycle states (Ready/Retrying/Resuming/Replanning/Invalidated/Escalated/NeedsHuman) + 8 transition methods (8 new tests, 32 total DAG tests)
+2. **Rollback Quality** (`internal/dag/rollback.go`) — RollbackQuality grading (FULL/PARTIAL/STRUCTURAL/NONE) + RollbackResult type (3 tests)
+3. **Invariant Framework** (`internal/invariant/`) — 9 correctness checkers (I1-I9): WAL-DB consistency, artifact reference, hanging actions, idempotency, trace completeness, audit hash chain, anchor consistency, dual-DB, lock ordering (7 tests)
+4. **Memory Staged Commit** (`internal/staging/`) — 6-state pipeline (PENDING→VERIFIED/UNVERIFIED/REJECTED/EXPIRED→COMMITTED) + NLI keyword stub for conflict detection (10 tests)
+5. **Doctor integration** — invariant I1-I9 checks in `apex doctor`
+6. **run.go integration** — staging pipeline replaces direct memory save + auto-rollback on failure with quality grading
+7. **Manifest extension** — `rollback_quality` field in run manifest
+8. **E2E tests** — 3 new integration tests (invariant doctor, staging memory, rollback on failure)
 
 ## Testing
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 55 packages, 527 tests |
-| E2E tests (mock) | `make e2e` | 139 tests, all CLI commands |
+| Unit tests | `make test` | 57 packages, 555 tests |
+| E2E tests (mock) | `make e2e` | 142 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -140,3 +142,5 @@ Completed 2026-02-21. Three interdependent components forming the data reliabili
 | `internal/filelock` | Layered flock-based file locks with ordering enforcement (global→workspace), metadata tracking, and stale lock detection |
 | `internal/writerq` | Single-writer DB queue serializing SQLite writes through one goroutine with batch transactions, panic recovery, and kill switch |
 | `internal/outbox` | Action outbox with 7-step WAL protocol (STARTED→COMPLETED/FAILED), append-only JSONL with fsync, and startup reconciliation |
+| `internal/invariant` | Correctness verification framework with 9 checkers (I1-I9) covering WAL-DB consistency, artifact refs, hanging actions, idempotency, trace completeness, audit hash chain, anchors, dual-DB, and lock ordering |
+| `internal/staging` | Memory staged commit pipeline with 6-state lifecycle (PENDING→VERIFIED/UNVERIFIED/REJECTED/EXPIRED→COMMITTED) and keyword-based NLI conflict detection stub |
