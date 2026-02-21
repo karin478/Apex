@@ -158,7 +158,35 @@ func TestAllocateBorrowFromLowerPriority(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 8. TestUsage
+// 8. TestBorrowLimitRespected (regression: borrow must not exceed donor capacity)
+// ---------------------------------------------------------------------------
+
+func TestBorrowLimitRespected(t *testing.T) {
+	// Pool=6, HIGH reserved=2, LOW reserved=2 → unreserved=2
+	pool := NewSlotPool(6)
+	require.NoError(t, pool.AddReservation(Reservation{Priority: "HIGH", Reserved: 2}))
+	require.NoError(t, pool.AddReservation(Reservation{Priority: "LOW", Reserved: 2}))
+
+	// NORMAL fills unreserved (2 slots).
+	assert.True(t, pool.Allocate("NORMAL"))
+	assert.True(t, pool.Allocate("NORMAL"))
+
+	// NORMAL can borrow from LOW's 2 reserved slots (priority 2 < 3).
+	assert.True(t, pool.Allocate("NORMAL"))
+	assert.True(t, pool.Allocate("NORMAL"))
+
+	// NORMAL cannot borrow more — LOW's 2 reserved slots are exhausted.
+	assert.False(t, pool.Allocate("NORMAL"), "NORMAL should not steal HIGH's reserved slots")
+
+	// HIGH can still use its own reserved slots.
+	assert.True(t, pool.Allocate("HIGH"), "HIGH should still access its reserved slots")
+	assert.True(t, pool.Allocate("HIGH"), "HIGH should still access its reserved slots")
+
+	assert.Equal(t, 0, pool.Available())
+}
+
+// ---------------------------------------------------------------------------
+// 9. TestUsage
 // ---------------------------------------------------------------------------
 
 func TestUsage(t *testing.T) {

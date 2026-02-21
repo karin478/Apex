@@ -155,19 +155,25 @@ func (p *SlotPool) Allocate(priority string) bool {
 	}
 
 	// Step 4 -- borrow from lower-priority unused reservations.
-	// Find the lowest-priority tier (highest PriorityValue) that still has
-	// unused reserved capacity.
-	lowestUnused := -1
+	// Count total borrowable slots from lower-priority tiers and compare
+	// against how many have already been borrowed (over-unreserved usage).
+	callerPV := PriorityValue(priority)
+	lowerFreeReserved := 0
 	for pri, res := range p.reservations {
-		if p.allocated[pri] < res.Reserved {
-			pv := PriorityValue(pri)
-			if pv > lowestUnused {
-				lowestUnused = pv
+		if PriorityValue(pri) > callerPV {
+			free := res.Reserved - p.allocated[pri]
+			if free > 0 {
+				lowerFreeReserved += free
 			}
 		}
 	}
 
-	if lowestUnused >= 0 && PriorityValue(priority) < lowestUnused {
+	alreadyBorrowed := unreservedUsed - unreservedTotal
+	if alreadyBorrowed < 0 {
+		alreadyBorrowed = 0
+	}
+
+	if lowerFreeReserved > 0 && alreadyBorrowed < lowerFreeReserved {
 		p.allocated[priority]++
 		p.used++
 		return true
