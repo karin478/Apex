@@ -8,11 +8,21 @@ const (
 	Suspended Status = 5 // paused by user/system
 	Cancelled Status = 6 // cancelled by user/system
 	Skipped   Status = 7 // skipped due to dependency cancel/skip
+
+	// Extended lifecycle states (additive — architecture v11.0 §2.2 F1)
+	Ready       Status = 8  // dependencies resolved, waiting for execution slot
+	Retrying    Status = 9  // in exponential backoff, waiting for retry
+	Resuming    Status = 10 // resuming from Suspended (30s timeout)
+	Replanning  Status = 11 // change weight ≥1.5, needs re-plan (60s timeout)
+	Invalidated Status = 12 // artifact changed, needs re-execution
+	Escalated   Status = 13 // requires human intervention (terminal)
+	NeedsHuman  Status = 14 // explicit human approval required (terminal)
 )
 
 // IsTerminal returns true if the status is a terminal state.
 func IsTerminal(s Status) bool {
-	return s == Completed || s == Failed || s == Cancelled || s == Skipped
+	return s == Completed || s == Failed || s == Cancelled || s == Skipped ||
+		s == Escalated || s == NeedsHuman
 }
 
 // MarkBlocked transitions a node from Pending to Blocked.
@@ -123,6 +133,126 @@ func (d *DAG) cascadeSkip(cancelledID string) {
 			}
 		}
 	}
+}
+
+// MarkReady transitions a node from Pending or Blocked to Ready.
+func (d *DAG) MarkReady(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Pending && n.Status != Blocked {
+		return fmt.Errorf("dag: cannot mark node %q ready: current status is %s", id, n.Status)
+	}
+	n.Status = Ready
+	return nil
+}
+
+// MarkRetrying transitions a node from Failed to Retrying.
+func (d *DAG) MarkRetrying(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Failed {
+		return fmt.Errorf("dag: cannot retry node %q: current status is %s", id, n.Status)
+	}
+	n.Status = Retrying
+	return nil
+}
+
+// MarkResuming transitions a node from Suspended to Resuming.
+func (d *DAG) MarkResuming(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Suspended {
+		return fmt.Errorf("dag: cannot resume node %q: current status is %s", id, n.Status)
+	}
+	n.Status = Resuming
+	return nil
+}
+
+// MarkReplanning transitions a node from Suspended to Replanning.
+func (d *DAG) MarkReplanning(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Suspended {
+		return fmt.Errorf("dag: cannot replan node %q: current status is %s", id, n.Status)
+	}
+	n.Status = Replanning
+	return nil
+}
+
+// Invalidate transitions a node from Completed to Invalidated.
+func (d *DAG) Invalidate(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Completed {
+		return fmt.Errorf("dag: cannot invalidate node %q: current status is %s", id, n.Status)
+	}
+	n.Status = Invalidated
+	return nil
+}
+
+// Requeue transitions a node from Invalidated back to Pending.
+func (d *DAG) Requeue(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Invalidated {
+		return fmt.Errorf("dag: cannot requeue node %q: current status is %s", id, n.Status)
+	}
+	n.Status = Pending
+	return nil
+}
+
+// Escalate transitions a node from Retrying, Resuming, or Replanning to Escalated.
+func (d *DAG) Escalate(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Retrying && n.Status != Resuming && n.Status != Replanning {
+		return fmt.Errorf("dag: cannot escalate node %q: current status is %s", id, n.Status)
+	}
+	n.Status = Escalated
+	return nil
+}
+
+// MarkNeedsHuman transitions a node from Failed to NeedsHuman.
+func (d *DAG) MarkNeedsHuman(id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	n, ok := d.Nodes[id]
+	if !ok {
+		return fmt.Errorf("dag: node %q not found", id)
+	}
+	if n.Status != Failed {
+		return fmt.Errorf("dag: cannot mark node %q needs-human: current status is %s", id, n.Status)
+	}
+	n.Status = NeedsHuman
+	return nil
 }
 
 // StatusCounts returns a count of nodes per status name.

@@ -203,3 +203,118 @@ func TestStatusCounts(t *testing.T) {
 	assert.Equal(t, 1, counts["BLOCKED"])
 	assert.Equal(t, 1, counts["SUSPENDED"])
 }
+
+func TestExtendedStatusStrings(t *testing.T) {
+	cases := []struct {
+		status Status
+		want   string
+	}{
+		{Ready, "READY"},
+		{Retrying, "RETRYING"},
+		{Resuming, "RESUMING"},
+		{Replanning, "REPLANNING"},
+		{Invalidated, "INVALIDATED"},
+		{Escalated, "ESCALATED"},
+		{NeedsHuman, "NEEDS_HUMAN"},
+	}
+	for _, tc := range cases {
+		assert.Equal(t, tc.want, tc.status.String())
+	}
+}
+
+func TestExtendedIsTerminal(t *testing.T) {
+	assert.True(t, IsTerminal(Escalated))
+	assert.True(t, IsTerminal(NeedsHuman))
+	assert.False(t, IsTerminal(Ready))
+	assert.False(t, IsTerminal(Retrying))
+	assert.False(t, IsTerminal(Resuming))
+	assert.False(t, IsTerminal(Replanning))
+	assert.False(t, IsTerminal(Invalidated))
+}
+
+// Helper: creates a simple 2-node linear DAG
+func makeLinearDAG(t *testing.T) *DAG {
+	t.Helper()
+	d, err := New([]NodeSpec{
+		{ID: "step1", Task: "first", Depends: nil},
+		{ID: "step2", Task: "second", Depends: []string{"step1"}},
+	})
+	require.NoError(t, err)
+	return d
+}
+
+func TestMarkReady(t *testing.T) {
+	d := makeLinearDAG(t)
+	err := d.MarkReady("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Ready, d.Nodes["step1"].Status)
+
+	d.Nodes["step1"].Status = Running
+	err = d.MarkReady("step1")
+	assert.Error(t, err)
+}
+
+func TestMarkRetrying(t *testing.T) {
+	d := makeLinearDAG(t)
+	d.Nodes["step1"].Status = Failed
+	err := d.MarkRetrying("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Retrying, d.Nodes["step1"].Status)
+
+	d.Nodes["step2"].Status = Pending
+	err = d.MarkRetrying("step2")
+	assert.Error(t, err)
+}
+
+func TestMarkResumingAndReplanning(t *testing.T) {
+	d := makeLinearDAG(t)
+	d.Nodes["step1"].Status = Suspended
+
+	err := d.MarkResuming("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Resuming, d.Nodes["step1"].Status)
+
+	d.Nodes["step1"].Status = Suspended
+	err = d.MarkReplanning("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Replanning, d.Nodes["step1"].Status)
+}
+
+func TestInvalidateAndRequeue(t *testing.T) {
+	d := makeLinearDAG(t)
+	d.Nodes["step1"].Status = Completed
+
+	err := d.Invalidate("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Invalidated, d.Nodes["step1"].Status)
+
+	err = d.Requeue("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Pending, d.Nodes["step1"].Status)
+}
+
+func TestEscalate(t *testing.T) {
+	d := makeLinearDAG(t)
+
+	d.Nodes["step1"].Status = Retrying
+	err := d.Escalate("step1")
+	require.NoError(t, err)
+	assert.Equal(t, Escalated, d.Nodes["step1"].Status)
+
+	d.Nodes["step2"].Status = Resuming
+	err = d.Escalate("step2")
+	require.NoError(t, err)
+	assert.Equal(t, Escalated, d.Nodes["step2"].Status)
+}
+
+func TestMarkNeedsHuman(t *testing.T) {
+	d := makeLinearDAG(t)
+	d.Nodes["step1"].Status = Failed
+
+	err := d.MarkNeedsHuman("step1")
+	require.NoError(t, err)
+	assert.Equal(t, NeedsHuman, d.Nodes["step1"].Status)
+
+	err = d.MarkNeedsHuman("step2")
+	assert.Error(t, err)
+}

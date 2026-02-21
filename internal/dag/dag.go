@@ -35,6 +35,20 @@ func (s Status) String() string {
 		return "CANCELLED"
 	case Skipped:
 		return "SKIPPED"
+	case Ready:
+		return "READY"
+	case Retrying:
+		return "RETRYING"
+	case Resuming:
+		return "RESUMING"
+	case Replanning:
+		return "REPLANNING"
+	case Invalidated:
+		return "INVALIDATED"
+	case Escalated:
+		return "ESCALATED"
+	case NeedsHuman:
+		return "NEEDS_HUMAN"
 	default:
 		return "UNKNOWN"
 	}
