@@ -30,8 +30,9 @@ type Manifest struct {
 	NodeCount  int          `json:"node_count"`
 	DurationMs int64        `json:"duration_ms"`
 	Outcome    string       `json:"outcome"`
-	TraceID    string       `json:"trace_id,omitempty"`
-	Nodes      []NodeResult `json:"nodes"`
+	TraceID         string       `json:"trace_id,omitempty"`
+	RollbackQuality string       `json:"rollback_quality,omitempty"`
+	Nodes           []NodeResult `json:"nodes"`
 }
 
 // Store manages manifest persistence under a root directory.

@@ -29,6 +29,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/retry"
 	"github.com/lyndonlyu/apex/internal/sandbox"
 	"github.com/lyndonlyu/apex/internal/snapshot"
+	"github.com/lyndonlyu/apex/internal/staging"
 	"github.com/lyndonlyu/apex/internal/statedb"
 	"github.com/lyndonlyu/apex/internal/trace"
 	"github.com/lyndonlyu/apex/internal/writerq"
@@ -80,6 +81,22 @@ func runTask(cmd *cobra.Command, args []string) error {
 	wq := writerq.New(sdb.RawDB(), writerq.WithKillSwitchPath(killSwitchPath()))
 	defer wq.Close()
 	sdb.SetQueue(wq)
+
+	// Memory staging pipeline
+	memDir := filepath.Join(cfg.BaseDir, "memory")
+	memStore, memStoreErr := memory.NewStore(memDir)
+	if memStoreErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: memory store init failed: %v\n", memStoreErr)
+	}
+
+	var stager *staging.Stager
+	if memStore != nil {
+		var stagerErr error
+		stager, stagerErr = staging.New(sdb.RawDB(), memStore)
+		if stagerErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: staging init failed: %v\n", stagerErr)
+		}
+	}
 
 	// Action outbox
 	walPath := filepath.Join(runtimeDir, "actions_wal.jsonl")
@@ -483,13 +500,30 @@ func runTask(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Attempt rollback on failure/kill
+	var rollbackResult dag.RollbackResult
+	if snap != nil && outcome != "success" {
+		rollbackResult = dag.RollbackResult{
+			RunID: runID,
+		}
+		if restoreErr := snapMgr.Restore(runID); restoreErr != nil {
+			rollbackResult.Quality = dag.QualityNone
+			rollbackResult.Detail = fmt.Sprintf("restore failed: %v", restoreErr)
+			fmt.Fprintf(os.Stderr, "warning: auto-rollback failed: %v\n", restoreErr)
+		} else {
+			rollbackResult.Quality = dag.QualityFull
+			rollbackResult.Detail = "snapshot restored"
+			fmt.Println("Auto-rollback: snapshot restored successfully")
+		}
+	}
+
 	// Handle snapshot based on outcome
 	if snap != nil {
 		if outcome == "success" {
 			if dropErr := snapMgr.Drop(runID); dropErr != nil {
 				fmt.Fprintf(os.Stderr, "warning: snapshot cleanup failed: %v\n", dropErr)
 			}
-		} else {
+		} else if rollbackResult.Quality != dag.QualityFull {
 			fmt.Printf("\nSnapshot available. Restore with: apex snapshot restore %s\n", runID)
 		}
 	}
@@ -509,17 +543,18 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 
 	runManifest := &manifest.Manifest{
-		RunID:      runID,
-		Task:       task,
-		Timestamp:  time.Now().UTC().Format(time.RFC3339),
-		Model:      cfg.Claude.Model,
-		Effort:     cfg.Claude.Effort,
-		RiskLevel:  risk.String(),
-		NodeCount:  len(d.Nodes),
-		DurationMs: duration.Milliseconds(),
-		Outcome:    outcome,
-		TraceID:    tc.TraceID,
-		Nodes:      nodeResults,
+		RunID:           runID,
+		Task:            task,
+		Timestamp:       time.Now().UTC().Format(time.RFC3339),
+		Model:           cfg.Claude.Model,
+		Effort:          cfg.Claude.Effort,
+		RiskLevel:       risk.String(),
+		NodeCount:       len(d.Nodes),
+		DurationMs:      duration.Milliseconds(),
+		Outcome:         outcome,
+		TraceID:         tc.TraceID,
+		RollbackQuality: string(rollbackResult.Quality),
+		Nodes:           nodeResults,
 	}
 
 	if saveErr := manifestStore.Save(runManifest); saveErr != nil {
@@ -534,13 +569,16 @@ func runTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("execution error: %w", execErr)
 	}
 
-	// Save to memory
-	memDir := filepath.Join(cfg.BaseDir, "memory")
-	store, memErr := memory.NewStore(memDir)
-	if memErr != nil {
-		fmt.Fprintf(os.Stderr, "warning: memory init failed: %v\n", memErr)
-	} else {
-		store.SaveSession("run", task, d.Summary())
+	// Save to memory via staging pipeline
+	if stager != nil {
+		if stageID, stageErr := stager.Stage(d.Summary(), "session", runID); stageErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: staging failed: %v\n", stageErr)
+		} else {
+			stager.Verify(stageID)
+			stager.Commit(stageID)
+		}
+	} else if memStore != nil {
+		memStore.SaveSession("run", task, d.Summary())
 	}
 
 	fmt.Printf("\nDone (%.1fs, %s risk, %d steps)\n", duration.Seconds(), risk, len(d.Nodes))
