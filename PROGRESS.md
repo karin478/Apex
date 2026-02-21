@@ -61,17 +61,26 @@
 | 45 | Task Template System | `2026-02-21-phase45-task-template-design.md` | Done |
 | 46 | Run History Analytics | `2026-02-21-phase46-run-analytics-design.md` | Done |
 | 47 | Environment Precheck | `2026-02-21-phase47-env-precheck-design.md` | Done |
+| 48 | Data Reliability Foundation | `2026-02-21-phase48-data-reliability-design.md` | Done |
 
-## Current: Phase 48 — TBD
+## Current: Phase 48 — Data Reliability Foundation ✅
 
-No phase in progress.
+Completed 2026-02-21. Three interdependent components forming the data reliability foundation:
+
+1. **Layered Locks** (`internal/filelock/`) — flock-based file locks with ordering enforcement (8 tests)
+2. **DB Writer Queue** (`internal/writerq/`) — single-writer goroutine with batch merging (5 tests)
+3. **Action Outbox** (`internal/outbox/`) — 7-step WAL protocol with startup reconciliation (8 tests)
+4. **statedb integration** — optional queue routing for serialized writes (4 new tests)
+5. **run.go integration** — outbox + locks wired into execution pipeline
+6. **doctor integration** — lock status + outbox health checks
+7. **E2E tests** — 4 new integration tests
 
 ## Testing
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 52 packages |
-| E2E tests (mock) | `make e2e` | 135 tests, all CLI commands |
+| Unit tests | `make test` | 55 packages, 527 tests |
+| E2E tests (mock) | `make e2e` | 139 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -128,3 +137,6 @@ No phase in progress.
 | `internal/template` | Reusable DAG templates with YAML loading, {{.VarName}} substitution, and Registry |
 | `internal/analytics` | Run history analytics with summary, duration stats (P50/P90), and failure pattern detection |
 | `internal/precheck` | Environment precheck with pluggable Check interface, DirCheck/FileCheck/BinaryCheck, and Runner |
+| `internal/filelock` | Layered flock-based file locks with ordering enforcement (global→workspace), metadata tracking, and stale lock detection |
+| `internal/writerq` | Single-writer DB queue serializing SQLite writes through one goroutine with batch transactions, panic recovery, and kill switch |
+| `internal/outbox` | Action outbox with 7-step WAL protocol (STARTED→COMPLETED/FAILED), append-only JSONL with fsync, and startup reconciliation |
