@@ -59,6 +59,7 @@ func init() {
 	rootCmd.AddCommand(failcloseCmd)
 	rootCmd.AddCommand(statedbCmd)
 	rootCmd.AddCommand(qosCmd)
+	rootCmd.AddCommand(templateCmd)
 }
 
 func main() {
