@@ -58,8 +58,9 @@
 | 42 | Runtime State DB | `2026-02-21-phase42-runtime-state-db-design.md` | Done |
 | 43 | DAG State Machine Extension | `2026-02-21-phase43-dag-state-extension-design.md` | Done |
 | 44 | Resource QoS | `2026-02-21-phase44-resource-qos-design.md` | Done |
+| 45 | Task Template System | `2026-02-21-phase45-task-template-design.md` | Done |
 
-## Current: Phase 45 — TBD
+## Current: Phase 46 — TBD
 
 No phase in progress.
 
@@ -67,8 +68,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 49 packages |
-| E2E tests (mock) | `make e2e` | 128 tests, all CLI commands |
+| Unit tests | `make test` | 50 packages |
+| E2E tests (mock) | `make e2e` | 131 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -122,3 +123,4 @@ No phase in progress.
 | `internal/failclose` | Fail-closed safety gate with pluggable conditions, health/killswitch checks, and MustPass enforcement |
 | `internal/statedb` | Centralized SQLite WAL runtime state DB with key-value state store and run record persistence |
 | `internal/qos` | Priority-based resource QoS with slot reservation, 4-step allocation, and URGENT borrowing |
+| `internal/template` | Reusable DAG templates with YAML loading, {{.VarName}} substitution, and Registry |
