@@ -16,18 +16,22 @@ import (
 	apexctx "github.com/lyndonlyu/apex/internal/context"
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
+	"github.com/lyndonlyu/apex/internal/filelock"
 	"github.com/lyndonlyu/apex/internal/governance"
 	"github.com/lyndonlyu/apex/internal/health"
 	"github.com/lyndonlyu/apex/internal/killswitch"
 	"github.com/lyndonlyu/apex/internal/manifest"
 	"github.com/lyndonlyu/apex/internal/memory"
+	"github.com/lyndonlyu/apex/internal/outbox"
 	"github.com/lyndonlyu/apex/internal/planner"
 	"github.com/lyndonlyu/apex/internal/pool"
 	"github.com/lyndonlyu/apex/internal/redact"
 	"github.com/lyndonlyu/apex/internal/retry"
 	"github.com/lyndonlyu/apex/internal/sandbox"
 	"github.com/lyndonlyu/apex/internal/snapshot"
+	"github.com/lyndonlyu/apex/internal/statedb"
 	"github.com/lyndonlyu/apex/internal/trace"
+	"github.com/lyndonlyu/apex/internal/writerq"
 	"github.com/spf13/cobra"
 )
 
@@ -60,6 +64,44 @@ func runTask(cmd *cobra.Command, args []string) error {
 	if err := cfg.EnsureDirs(); err != nil {
 		return fmt.Errorf("failed to create dirs: %w", err)
 	}
+
+	// --- Data Reliability: statedb + writerq + outbox ---
+	runtimeDir := filepath.Join(cfg.BaseDir, "runtime")
+	if mkErr := os.MkdirAll(runtimeDir, 0755); mkErr != nil {
+		return fmt.Errorf("failed to create runtime dir: %w", mkErr)
+	}
+
+	sdb, sdbErr := statedb.Open(filepath.Join(runtimeDir, "runtime.db"))
+	if sdbErr != nil {
+		return fmt.Errorf("statedb: %w", sdbErr)
+	}
+	defer sdb.Close()
+
+	wq := writerq.New(sdb.RawDB(), writerq.WithKillSwitchPath(killSwitchPath()))
+	defer wq.Close()
+	sdb.SetQueue(wq)
+
+	// Action outbox
+	walPath := filepath.Join(runtimeDir, "actions_wal.jsonl")
+	ob, obErr := outbox.New(walPath, sdb.RawDB(), wq)
+	if obErr != nil {
+		fmt.Fprintf(os.Stderr, "warning: outbox init failed: %v\n", obErr)
+	}
+
+	// Reconcile orphan actions from previous crash
+	if ob != nil {
+		if orphans, recErr := ob.Reconcile(); recErr == nil && len(orphans) > 0 {
+			fmt.Fprintf(os.Stderr, "warning: %d orphan action(s) from previous run (NEEDS_HUMAN)\n", len(orphans))
+		}
+	}
+
+	// Acquire global lock
+	lockMgr := filelock.NewManager()
+	globalLock, lockErr := lockMgr.AcquireGlobal(runtimeDir)
+	if lockErr != nil {
+		return fmt.Errorf("cannot acquire global lock: %w", lockErr)
+	}
+	defer lockMgr.Release(globalLock)
 
 	// Policy change tracking
 	policyDir := filepath.Join(cfg.BaseDir, "policy-state")
@@ -300,6 +342,25 @@ func runTask(cmd *cobra.Command, args []string) error {
 	killCtx, killCancel := ks.Watch(context.Background())
 	defer killCancel()
 
+	// Pre-generate action IDs for each node so we can build causal links
+	nodeActionIDs := make(map[string]string)
+	for id := range d.Nodes {
+		nodeActionIDs[id] = uuid.New().String()
+	}
+
+	// Register all nodes in outbox before execution
+	if ob != nil {
+		for _, n := range d.Nodes {
+			actionID := nodeActionIDs[n.ID]
+			if beginErr := ob.Begin(actionID, tc.TraceID, n.Task); beginErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: outbox begin failed for %s: %v\n", n.ID, beginErr)
+			}
+			if recErr := ob.RecordStarted(actionID, tc.TraceID, n.Task); recErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: outbox record failed for %s: %v\n", n.ID, recErr)
+			}
+		}
+	}
+
 	fmt.Println("Executing...")
 	start := time.Now()
 	execErr := p.Execute(killCtx, d)
@@ -315,6 +376,22 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	if killedBySwitch {
 		fmt.Println("\n[KILL SWITCH] Execution halted by kill switch.")
+	}
+
+	// Complete/fail nodes in outbox
+	if ob != nil {
+		for _, n := range d.Nodes {
+			actionID := nodeActionIDs[n.ID]
+			if n.Status == dag.Failed {
+				if failErr := ob.Fail(actionID, n.Error); failErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: outbox fail failed for %s: %v\n", n.ID, failErr)
+				}
+			} else if n.Status == dag.Completed {
+				if completeErr := ob.Complete(actionID, ""); completeErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: outbox complete failed for %s: %v\n", n.ID, completeErr)
+				}
+			}
+		}
 	}
 
 	// Audit
@@ -347,12 +424,6 @@ func runTask(cmd *cobra.Command, args []string) error {
 				Error:     fmt.Sprintf("%s\u2192%s", pc.OldChecksum, pc.NewChecksum),
 			})
 		}
-	}
-
-	// Pre-generate action IDs for each node so we can build causal links
-	nodeActionIDs := make(map[string]string)
-	for id := range d.Nodes {
-		nodeActionIDs[id] = uuid.New().String()
 	}
 
 	// Log each node
