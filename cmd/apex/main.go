@@ -61,6 +61,7 @@ func init() {
 	rootCmd.AddCommand(qosCmd)
 	rootCmd.AddCommand(templateCmd)
 	rootCmd.AddCommand(analyticsCmd)
+	rootCmd.AddCommand(precheckCmd)
 }
 
 func main() {
