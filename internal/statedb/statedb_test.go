@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lyndonlyu/apex/internal/writerq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -195,4 +196,112 @@ func TestUpdateRunStatusAndList(t *testing.T) {
 	// UpdateRunStatus on nonexistent run returns ErrNotFound.
 	err = db.UpdateRunStatus("nonexistent", "FAILED")
 	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestSetStateViaQueue(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"))
+	require.NoError(t, err)
+	defer db.Close()
+
+	q := writerq.New(db.RawDB())
+	defer q.Close()
+	db.SetQueue(q)
+
+	err = db.SetState("key1", "value1")
+	require.NoError(t, err)
+
+	entry, err := db.GetState("key1")
+	require.NoError(t, err)
+	assert.Equal(t, "value1", entry.Value)
+}
+
+func TestInsertRunViaQueue(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"))
+	require.NoError(t, err)
+	defer db.Close()
+
+	q := writerq.New(db.RawDB())
+	defer q.Close()
+	db.SetQueue(q)
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	err = db.InsertRun(RunRecord{
+		ID:        "run-q1",
+		Status:    "RUNNING",
+		TaskCount: 3,
+		StartedAt: now,
+	})
+	require.NoError(t, err)
+
+	got, err := db.GetRun("run-q1")
+	require.NoError(t, err)
+	assert.Equal(t, "RUNNING", got.Status)
+}
+
+func TestDeleteStateViaQueue(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"))
+	require.NoError(t, err)
+	defer db.Close()
+
+	q := writerq.New(db.RawDB())
+	defer q.Close()
+	db.SetQueue(q)
+
+	err = db.SetState("temp-q", "val")
+	require.NoError(t, err)
+
+	err = db.DeleteState("temp-q")
+	require.NoError(t, err)
+
+	_, err = db.GetState("temp-q")
+	assert.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestUpdateRunStatusViaQueue(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"))
+	require.NoError(t, err)
+	defer db.Close()
+
+	q := writerq.New(db.RawDB())
+	defer q.Close()
+	db.SetQueue(q)
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	err = db.InsertRun(RunRecord{
+		ID:        "run-q2",
+		Status:    "RUNNING",
+		TaskCount: 2,
+		StartedAt: now,
+	})
+	require.NoError(t, err)
+
+	// Update to COMPLETED — should set ended_at
+	err = db.UpdateRunStatus("run-q2", "COMPLETED")
+	require.NoError(t, err)
+
+	got, err := db.GetRun("run-q2")
+	require.NoError(t, err)
+	assert.Equal(t, "COMPLETED", got.Status)
+	assert.NotEmpty(t, got.EndedAt)
+
+	// Insert another run and update to RUNNING — no ended_at change
+	err = db.InsertRun(RunRecord{
+		ID:        "run-q3",
+		Status:    "PENDING",
+		TaskCount: 1,
+		StartedAt: now,
+	})
+	require.NoError(t, err)
+
+	err = db.UpdateRunStatus("run-q3", "RUNNING")
+	require.NoError(t, err)
+
+	got2, err := db.GetRun("run-q3")
+	require.NoError(t, err)
+	assert.Equal(t, "RUNNING", got2.Status)
+	assert.Empty(t, got2.EndedAt)
 }

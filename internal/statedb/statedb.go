@@ -1,19 +1,22 @@
 package statedb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/lyndonlyu/apex/internal/writerq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var ErrNotFound = errors.New("statedb: not found")
 
 type DB struct {
-	db   *sql.DB
-	path string
+	db    *sql.DB
+	path  string
+	queue *writerq.Queue
 }
 
 type StateEntry struct {
@@ -90,14 +93,38 @@ func (d *DB) Path() string {
 	return d.path
 }
 
+// RawDB returns the underlying *sql.DB for use by external components
+// such as the writer queue.
+func (d *DB) RawDB() *sql.DB {
+	return d.db
+}
+
+// SetQueue sets an optional writer queue. When set, all write operations
+// (SetState, InsertRun, UpdateRunStatus, DeleteState) are routed through
+// the queue for serialized writes. When nil (default), writes use direct
+// db.Exec as before.
+//
+// SetQueue must be called before any concurrent access to write methods.
+// Note: when queue is set, UpdateRunStatus does not return ErrNotFound
+// for nonexistent IDs (the outbox protocol ensures records exist).
+func (d *DB) SetQueue(q *writerq.Queue) {
+	d.queue = q
+}
+
 // SetState upserts a key-value state entry. The updated_at timestamp
 // is set to the current UTC time in RFC3339 format.
 func (d *DB) SetState(key, value string) error {
 	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := d.db.Exec(
-		`INSERT OR REPLACE INTO state (key, value, updated_at) VALUES (?, ?, ?)`,
-		key, value, now,
-	)
+	sqlStr := `INSERT OR REPLACE INTO state (key, value, updated_at) VALUES (?, ?, ?)`
+
+	if d.queue != nil {
+		if err := d.queue.Submit(context.Background(), sqlStr, key, value, now); err != nil {
+			return fmt.Errorf("statedb: set state: %w", err)
+		}
+		return nil
+	}
+
+	_, err := d.db.Exec(sqlStr, key, value, now)
 	if err != nil {
 		return fmt.Errorf("statedb: set state: %w", err)
 	}
@@ -122,7 +149,16 @@ func (d *DB) GetState(key string) (StateEntry, error) {
 
 // DeleteState removes a state entry by key.
 func (d *DB) DeleteState(key string) error {
-	_, err := d.db.Exec(`DELETE FROM state WHERE key = ?`, key)
+	sqlStr := `DELETE FROM state WHERE key = ?`
+
+	if d.queue != nil {
+		if err := d.queue.Submit(context.Background(), sqlStr, key); err != nil {
+			return fmt.Errorf("statedb: delete state: %w", err)
+		}
+		return nil
+	}
+
+	_, err := d.db.Exec(sqlStr, key)
 	if err != nil {
 		return fmt.Errorf("statedb: delete state: %w", err)
 	}
@@ -153,8 +189,18 @@ func (d *DB) ListState() ([]StateEntry, error) {
 
 // InsertRun inserts a new run record.
 func (d *DB) InsertRun(record RunRecord) error {
-	_, err := d.db.Exec(
-		`INSERT INTO runs (id, status, task_count, started_at, ended_at) VALUES (?, ?, ?, ?, ?)`,
+	sqlStr := `INSERT INTO runs (id, status, task_count, started_at, ended_at) VALUES (?, ?, ?, ?, ?)`
+
+	if d.queue != nil {
+		if err := d.queue.Submit(context.Background(), sqlStr,
+			record.ID, record.Status, record.TaskCount, record.StartedAt, record.EndedAt,
+		); err != nil {
+			return fmt.Errorf("statedb: insert run: %w", err)
+		}
+		return nil
+	}
+
+	_, err := d.db.Exec(sqlStr,
 		record.ID, record.Status, record.TaskCount, record.StartedAt, record.EndedAt,
 	)
 	if err != nil {
@@ -186,6 +232,28 @@ func (d *DB) UpdateRunStatus(id, status string) error {
 	endedAt := ""
 	if status == "COMPLETED" || status == "FAILED" {
 		endedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	if d.queue != nil {
+		// When using the queue, Submit returns only error — no sql.Result
+		// for RowsAffected. The outbox protocol ensures records exist
+		// before updating, so skipping the RowsAffected check is acceptable.
+		var err error
+		if endedAt != "" {
+			err = d.queue.Submit(context.Background(),
+				`UPDATE runs SET status = ?, ended_at = ? WHERE id = ?`,
+				status, endedAt, id,
+			)
+		} else {
+			err = d.queue.Submit(context.Background(),
+				`UPDATE runs SET status = ? WHERE id = ?`,
+				status, id,
+			)
+		}
+		if err != nil {
+			return fmt.Errorf("statedb: update run status: %w", err)
+		}
+		return nil
 	}
 
 	var result sql.Result
