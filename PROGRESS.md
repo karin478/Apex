@@ -59,8 +59,9 @@
 | 43 | DAG State Machine Extension | `2026-02-21-phase43-dag-state-extension-design.md` | Done |
 | 44 | Resource QoS | `2026-02-21-phase44-resource-qos-design.md` | Done |
 | 45 | Task Template System | `2026-02-21-phase45-task-template-design.md` | Done |
+| 46 | Run History Analytics | `2026-02-21-phase46-run-analytics-design.md` | Done |
 
-## Current: Phase 46 — TBD
+## Current: Phase 47 — TBD
 
 No phase in progress.
 
@@ -68,8 +69,8 @@ No phase in progress.
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit tests | `make test` | 50 packages |
-| E2E tests (mock) | `make e2e` | 131 tests, all CLI commands |
+| Unit tests | `make test` | 51 packages |
+| E2E tests (mock) | `make e2e` | 133 tests, all CLI commands |
 | E2E tests (live) | `make e2e-live` | 4 smoke tests with real Claude |
 
 ## Key Packages
@@ -124,3 +125,4 @@ No phase in progress.
 | `internal/statedb` | Centralized SQLite WAL runtime state DB with key-value state store and run record persistence |
 | `internal/qos` | Priority-based resource QoS with slot reservation, 4-step allocation, and URGENT borrowing |
 | `internal/template` | Reusable DAG templates with YAML loading, {{.VarName}} substitution, and Registry |
+| `internal/analytics` | Run history analytics with summary, duration stats (P50/P90), and failure pattern detection |
