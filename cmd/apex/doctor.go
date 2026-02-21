@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"github.com/lyndonlyu/apex/internal/audit"
 	"github.com/lyndonlyu/apex/internal/filelock"
 	"github.com/lyndonlyu/apex/internal/health"
+	"github.com/lyndonlyu/apex/internal/invariant"
 	"github.com/lyndonlyu/apex/internal/outbox"
 	"github.com/lyndonlyu/apex/internal/statedb"
 	"github.com/lyndonlyu/apex/internal/writerq"
@@ -158,7 +160,39 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		fmt.Println("SKIP (no WAL file)")
 	}
 
-	// 7. Health evaluation
+	// 7. Invariant checks
+	fmt.Print("Invariant checks... ")
+	runtimeDBPath := filepath.Join(runtimeDir, "runtime.db")
+	if _, dbStatErr := os.Stat(runtimeDBPath); dbStatErr == nil {
+		invDB, invDBErr := sql.Open("sqlite3", runtimeDBPath)
+		if invDBErr == nil {
+			defer invDB.Close()
+			runner := invariant.NewRunner(invDB, filepath.Join(home, ".apex"))
+			invResults := runner.RunAll()
+			fails := 0
+			for _, res := range invResults {
+				if res.Status == "FAIL" {
+					fails++
+				}
+			}
+			if fails == 0 {
+				fmt.Println("OK (9/9 pass)")
+			} else {
+				fmt.Printf("WARNING: %d/9 invariant(s) failed\n", fails)
+				for _, res := range invResults {
+					if res.Status == "FAIL" {
+						fmt.Printf("  [%s] %s: %s\n", res.ID, res.Name, res.Detail)
+					}
+				}
+			}
+		} else {
+			fmt.Printf("ERROR: %v\n", invDBErr)
+		}
+	} else {
+		fmt.Println("SKIP (no runtime.db)")
+	}
+
+	// 8. Health evaluation
 	baseDir := filepath.Join(home, ".apex")
 	report := health.Evaluate(baseDir)
 
