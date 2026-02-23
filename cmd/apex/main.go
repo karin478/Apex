@@ -11,6 +11,7 @@ var rootCmd = &cobra.Command{
 	Use:   "apex",
 	Short: "Apex Agent - Claude Code autonomous agent system",
 	Long:  "Apex Agent is a CLI tool that orchestrates Claude Code for long-term memory autonomous agent tasks.",
+	RunE:  startInteractive,
 }
 
 var versionCmd = &cobra.Command{
