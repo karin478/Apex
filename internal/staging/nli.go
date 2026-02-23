@@ -11,9 +11,9 @@ const (
 	Neutral       ConflictType = "NEUTRAL"
 )
 
-// negationKeywords used to detect contradiction in Chinese and English.
+// negationKeywords used to detect contradiction in natural language.
 var negationKeywords = []string{
-	"不是", "错误", "废弃", "not", "incorrect", "deprecated", "wrong", "false",
+	"not", "incorrect", "deprecated", "wrong", "false", "invalid", "obsolete",
 }
 
 // ClassifyConflict uses keyword-based heuristics to classify the relationship

@@ -104,7 +104,7 @@ func (r RiskLevel) ShouldRequireApproval() bool {
 
 // criticalPhrases match as substrings — only true operational dangers.
 var criticalPhrases = []string{
-	"production", "encryption key", "密钥",
+	"production", "encryption key", "secret key", "api key",
 }
 
 // highPhrases match destructive operations.
@@ -113,7 +113,7 @@ var highPhrases = []string{
 	"drop table", "drop database", "drop index",
 	"delete from", "truncate table",
 	"force push", "force-push",
-	"删除数据库", "部署到生产", "迁移数据库",
+	"delete database", "deploy to prod", "migrate database",
 }
 
 // highWords match only as whole words (not substrings).
@@ -131,7 +131,7 @@ var mediumPhrases = []string{
 	"edit file", "edit config",
 	"change config", "change permission",
 	"remove file", "remove directory", "remove package",
-	"修改配置", "修改文件", "安装依赖", "创建文件", "编辑配置",
+	"modify setting", "modify permission", "install dep", "create table", "edit setting",
 }
 
 // mediumWords match only as whole words — avoids "write tests" triggering MEDIUM.

@@ -32,8 +32,8 @@ func TestClassifyMedium(t *testing.T) {
 		"update config for staging",
 		"create file handler.go",
 		"edit file main.go",
-		"修改配置文件",
-		"安装依赖包",
+		"modify setting for auth",
+		"install dep for api",
 		"overwrite the output",
 	}
 	for _, task := range tests {
@@ -48,8 +48,8 @@ func TestClassifyHigh(t *testing.T) {
 		"drop table users",
 		"migrate the database schema",
 		"rm -rf the temp directory",
-		"删除数据库备份",
-		"部署到生产环境",
+		"delete database backups",
+		"deploy to prod environment",
 		"force push to main",
 	}
 	for _, task := range tests {
@@ -60,7 +60,7 @@ func TestClassifyHigh(t *testing.T) {
 func TestClassifyCritical(t *testing.T) {
 	tests := []string{
 		"deploy to production with new encryption keys",
-		"rotate the production API密钥",
+		"rotate the production api key",
 	}
 	for _, task := range tests {
 		assert.Equal(t, CRITICAL, Classify(task), "task: %s", task)

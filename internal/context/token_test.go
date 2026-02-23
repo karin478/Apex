@@ -14,8 +14,8 @@ func TestEstimateTokensEnglish(t *testing.T) {
 	assert.InDelta(t, len([]rune(text))/3, tokens, 5)
 }
 
-func TestEstimateTokensChinese(t *testing.T) {
-	text := "你好世界这是一个测试"
+func TestEstimateTokensMultibyte(t *testing.T) {
+	text := "Héllo wörld thïs ïs ä tëst with accénts"
 	tokens := EstimateTokens(text)
 	assert.Greater(t, tokens, 0)
 }

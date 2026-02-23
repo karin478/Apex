@@ -50,16 +50,11 @@ func TestIsSimpleTask(t *testing.T) {
 	assert.False(t, IsSimpleTask("refactor the auth module and then update all tests and deploy"))
 	assert.False(t, IsSimpleTask("first analyze the code, then refactor, after that write tests"))
 
-	// Chinese multi-step tasks
-	assert.False(t, IsSimpleTask("先分析代码，然后重构，最后写测试"))
-	assert.False(t, IsSimpleTask("首先读取文件，接着统计行数，最后生成报告"))
-	assert.False(t, IsSimpleTask("第一步分析依赖，第二步生成图表"))
-	assert.False(t, IsSimpleTask("先创建目录，然后创建文件，最后写 index"))
-
-	// Chinese simple tasks (should remain simple)
-	assert.True(t, IsSimpleTask("分析这个函数"))
-	assert.True(t, IsSimpleTask("读取 README"))
-	assert.True(t, IsSimpleTask("列出所有文件"))
+	// Additional multi-step patterns
+	assert.False(t, IsSimpleTask("analyze deps, afterward generate a chart and finally deploy"))
+	assert.False(t, IsSimpleTask("once setup is done, configure the database subsequently run migrations"))
+	assert.False(t, IsSimpleTask("step 1 analyze, step 2 build, step 3 test"))
+	assert.False(t, IsSimpleTask("create the directory, then create files, lastly write the index"))
 }
 
 func TestBuildPlannerPrompt(t *testing.T) {
