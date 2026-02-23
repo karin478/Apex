@@ -198,6 +198,33 @@ apex run --dry-run "migrate the database schema and update all models"
 apex run --yes "run all tests and generate coverage report"
 ```
 
+### Interactive Mode
+
+```bash
+# Enter interactive REPL
+$ apex
+
+apex v0.1.0 · claude-sonnet-4 · ulimit
+Type a task, /help for commands, /quit to exit
+
+apex> analyze the error handling in this codebase
+[LOW] Planning... 1 step
+● Analyzing... ✓ (8.2s)
+→ Found 3 patterns...
+
+apex> now refactor them to use fmt.Errorf
+[MEDIUM] Confirm? (y/n): y
+Planning... 2 steps
+● [1/2] Refactoring... ✓ (12.1s)
+● [2/2] Updating tests... ✓ (6.4s)
+✓ Done (18.5s, 2 steps)
+
+apex> /quit
+Session saved. Goodbye!
+```
+
+Session context persists across turns — follow-up tasks can reference previous results. Slash commands (`/help`, `/status`, `/doctor`, `/config`, `/clear`) provide system operations without LLM overhead.
+
 ---
 
 ## Commands

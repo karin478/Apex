@@ -39,10 +39,37 @@ func TestSandboxUlimit(t *testing.T) {
 
 func TestSandboxFailClosedRejects(t *testing.T) {
 	env := newTestEnv(t)
-	// Configure: sandbox=none but require_for=[HIGH]
-	writeTestConfig(t, env, "none", []string{"HIGH"})
-	// "delete" triggers HIGH risk — should be rejected by fail-closed
-	stdout, stderr, code := env.runApex("run", "delete old files")
+	// Write config with governance that confirms (not rejects) HIGH,
+	// so the task reaches the fail-closed sandbox check.
+	configPath := filepath.Join(env.Home, ".apex", "config.yaml")
+	cfg := fmt.Sprintf(`claude:
+  model: "mock-model"
+  effort: "low"
+  timeout: 10
+  binary: %q
+planner:
+  model: "mock-model"
+  timeout: 10
+pool:
+  max_concurrent: 2
+retry:
+  max_attempts: 3
+  init_delay_seconds: 0
+  multiplier: 1.0
+  max_delay_seconds: 0
+sandbox:
+  level: "none"
+  require_for: ["HIGH"]
+governance:
+  auto_approve: ["LOW"]
+  confirm: ["MEDIUM", "HIGH"]
+  reject: ["CRITICAL"]
+`, env.MockBin)
+	os.WriteFile(configPath, []byte(cfg), 0644)
+
+	// "rm -rf" triggers HIGH risk; --yes auto-approves the confirmation,
+	// then fail-closed gate rejects because sandbox=none < required.
+	stdout, stderr, code := env.runApex("run", "--yes", "rm -rf old files")
 	combined := stdout + stderr
 	assert.NotEqual(t, 0, code)
 	assert.Contains(t, strings.ToLower(combined), "fail-closed")

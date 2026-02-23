@@ -58,12 +58,14 @@ func TestRunBlockedByCriticalHealth(t *testing.T) {
 	auditFile := filepath.Join(env.auditDir(), time.Now().Format("2006-01-02")+".jsonl")
 	require.NoError(t, os.WriteFile(auditFile, []byte("THIS IS NOT VALID JSON\n"), 0644))
 
-	stdout, stderr, code := env.runApex("run", "delete files")
+	// "modify config settings" triggers MEDIUM risk, which is non-LOW
+	// and should be blocked by the RED health gate.
+	stdout, stderr, code := env.runApex("run", "modify config settings")
+	combined := stdout + stderr
 
-	// The run command should exit 0 (returns nil after printing the gate message).
-	assert.Equal(t, 0, code, "apex run should exit 0 when blocked by health gate; stderr=%s", stderr)
-	assert.Contains(t, stdout, "[HEALTH] System health RED",
-		"stdout should contain the RED health gate message; got stdout=%s", stdout)
+	assert.NotEqual(t, 0, code, "apex run should fail when blocked by health gate")
+	assert.Contains(t, strings.ToLower(combined), "system health red",
+		"output should mention RED health; got: %s", combined)
 }
 
 // TestStatusShowsHealth verifies that "apex status" includes a System Health
