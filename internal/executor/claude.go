@@ -1,10 +1,12 @@
 package executor
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -46,6 +48,7 @@ type Options struct {
 	Binary         string          // defaults to "claude"
 	Sandbox        sandbox.Sandbox // optional sandbox wrapper
 	PermissionMode string          // "default", "acceptEdits", "bypassPermissions", "plan"
+	OnOutput       func(chunk string) // nil = buffer mode (default)
 }
 
 type Result struct {
@@ -106,11 +109,39 @@ func (e *Executor) Run(ctx context.Context, task string) (Result, error) {
 	cmd.Env = filterEnv("CLAUDECODE")
 
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
+	var pw *io.PipeWriter
+	var scanDone chan struct{}
+	if e.opts.OnOutput != nil {
+		var pr *io.PipeReader
+		pr, pw = io.Pipe()
+		cmd.Stdout = io.MultiWriter(&stdout, pw)
+		scanDone = make(chan struct{})
+		go func() {
+			scanner := bufio.NewScanner(pr)
+			scanner.Buffer(make([]byte, 0, 256*1024), 1024*1024) // up to 1MB lines
+			for scanner.Scan() {
+				e.opts.OnOutput(scanner.Text())
+			}
+			if err := scanner.Err(); err != nil {
+				e.opts.OnOutput("[streaming error: " + err.Error() + "]")
+			}
+			pr.Close()
+			close(scanDone)
+		}()
+	} else {
+		cmd.Stdout = &stdout
+	}
 	cmd.Stderr = &stderr
 
 	start := time.Now()
 	err := cmd.Run()
+
+	// If streaming, close the pipe writer so the scanner goroutine sees EOF,
+	// then wait for it to finish processing all output before returning.
+	if pw != nil {
+		pw.Close()
+		<-scanDone
+	}
 	duration := time.Since(start)
 
 	result := Result{

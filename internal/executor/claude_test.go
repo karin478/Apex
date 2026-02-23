@@ -116,3 +116,75 @@ func TestExecuteWithSandbox(t *testing.T) {
 	// The command ran through sh -c "ulimit ...; exec echo ..."
 	assert.Equal(t, 0, result.ExitCode)
 }
+
+func TestExecutorOnOutputCallback(t *testing.T) {
+	mockDir := t.TempDir()
+	mockBin := filepath.Join(mockDir, "mock_claude")
+	script := `#!/bin/sh
+echo 'line1'
+echo 'line2'
+echo 'line3'
+`
+	os.WriteFile(mockBin, []byte(script), 0755)
+
+	var chunks []string
+	exec := New(Options{
+		Model:   "test",
+		Effort:  "low",
+		Timeout: 10 * time.Second,
+		Binary:  mockBin,
+		OnOutput: func(chunk string) {
+			chunks = append(chunks, chunk)
+		},
+	})
+
+	result, err := exec.Run(context.Background(), "test task")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result.Output)
+	assert.Equal(t, 3, len(chunks))
+	assert.Equal(t, "line1", chunks[0])
+	assert.Equal(t, "line2", chunks[1])
+	assert.Equal(t, "line3", chunks[2])
+}
+
+func TestExecutorOnOutputTimeout(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "slow.sh")
+	os.WriteFile(script, []byte("#!/bin/sh\nwhile true; do echo progress; sleep 0.1; done\n"), 0755)
+
+	var chunks []string
+	exec := New(Options{
+		Model:   "test",
+		Effort:  "low",
+		Timeout: 500 * time.Millisecond,
+		Binary:  script,
+		OnOutput: func(chunk string) {
+			chunks = append(chunks, chunk)
+		},
+	})
+
+	result, err := exec.Run(context.Background(), "ignored")
+	assert.Error(t, err)
+	assert.True(t, result.TimedOut)
+	// Goroutine should have cleanly exited (no hang, no panic)
+	assert.Greater(t, len(chunks), 0)
+}
+
+func TestExecutorOnOutputNil(t *testing.T) {
+	mockDir := t.TempDir()
+	mockBin := filepath.Join(mockDir, "mock_claude")
+	script := `#!/bin/sh
+echo '{"result":"hello","is_error":false}'
+`
+	os.WriteFile(mockBin, []byte(script), 0755)
+
+	exec := New(Options{
+		Model:   "test",
+		Effort:  "low",
+		Timeout: 10 * time.Second,
+		Binary:  mockBin,
+	})
+
+	result, err := exec.Run(context.Background(), "test task")
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", result.Output)
+}
