@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/lyndonlyu/apex/internal/config"
 	"github.com/lyndonlyu/apex/internal/dag"
 	"github.com/lyndonlyu/apex/internal/executor"
@@ -32,16 +33,26 @@ func stripJSONEnvelope(line string) string {
 	return env.Result
 }
 
-// runInteractiveTask executes a single task through the full pipeline with
-// streaming output. Returns the result summary for session context.
-func runInteractiveTask(cfg *config.Config, task string, sessionContext string) (string, error) {
-	// Classify risk
-	risk := governance.Classify(task)
-	fmt.Println(renderRisk(risk.String()) + " " + styleInfo.Render("Planning..."))
+// renderMarkdown renders markdown text for terminal display.
+func renderMarkdown(text string) string {
+	r, err := glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(100))
+	if err != nil {
+		return text
+	}
+	out, err := r.Render(text)
+	if err != nil {
+		return text
+	}
+	return strings.TrimSpace(out)
+}
 
-	// Confirm if needed
+// runInteractiveTask executes a single task. Simple tasks skip the planner/DAG
+// pipeline and call the executor directly for faster response.
+func runInteractiveTask(cfg *config.Config, task string, sessionContext string) (string, error) {
+	risk := governance.Classify(task)
+
 	if risk.ShouldConfirm() {
-		fmt.Printf("Warning: %s risk. Proceed? (y/n): ", risk)
+		fmt.Printf("%s Warning: %s risk. Proceed? (y/n): ", renderRisk(risk.String()), risk)
 		var answer string
 		fmt.Scanln(&answer)
 		if answer != "y" && answer != "Y" {
@@ -52,12 +63,53 @@ func runInteractiveTask(cfg *config.Config, task string, sessionContext string) 
 		return "", fmt.Errorf("task rejected (%s risk)", risk)
 	}
 
-	// Resolve sandbox
 	var sb sandbox.Sandbox
 	level, _ := sandbox.ParseLevel(cfg.Sandbox.Level)
 	sb, _ = sandbox.ForLevel(level)
 
-	// Plan (planner only produces JSON task decomposition — use plan mode + low effort)
+	enrichedTask := task
+	if sessionContext != "" {
+		enrichedTask = "Context from previous tasks:\n" + sessionContext + "\n\nNew task: " + task
+	}
+
+	// Fast path: simple tasks skip planner+DAG, call executor directly
+	if planner.IsSimpleTask(task) {
+		return runSimpleTask(cfg, enrichedTask, sb)
+	}
+
+	// Complex path: planner → DAG → pool
+	return runComplexTask(cfg, enrichedTask, sb)
+}
+
+// runSimpleTask calls the executor directly — no planner, no DAG, no pool.
+func runSimpleTask(cfg *config.Config, task string, sb sandbox.Sandbox) (string, error) {
+	exec := executor.New(executor.Options{
+		Model:          cfg.Claude.Model,
+		Effort:         "low",
+		Timeout:        time.Duration(cfg.Claude.Timeout) * time.Second,
+		Binary:         cfg.Claude.Binary,
+		Sandbox:        sb,
+		PermissionMode: "bypassPermissions",
+	})
+
+	start := time.Now()
+	result, err := exec.Run(context.Background(), task)
+	duration := time.Since(start)
+
+	if err != nil {
+		fmt.Println(styleError.Render("✗ Failed") + styleDim.Render(fmt.Sprintf(" (%.1fs)", duration.Seconds())))
+		return result.Output, err
+	}
+
+	fmt.Println(renderMarkdown(result.Output))
+	fmt.Println(styleDim.Render(fmt.Sprintf("(%.1fs)", duration.Seconds())))
+	return result.Output, nil
+}
+
+// runComplexTask decomposes via planner, builds a DAG, and executes through the pool.
+func runComplexTask(cfg *config.Config, task string, sb sandbox.Sandbox) (string, error) {
+	fmt.Println(styleInfo.Render("Planning..."))
+
 	planExec := executor.New(executor.Options{
 		Model:          cfg.Planner.Model,
 		Effort:         "low",
@@ -67,13 +119,7 @@ func runInteractiveTask(cfg *config.Config, task string, sessionContext string) 
 		PermissionMode: "plan",
 	})
 
-	// Prepend session context to task for continuity
-	enrichedTask := task
-	if sessionContext != "" {
-		enrichedTask = "Context from previous tasks:\n" + sessionContext + "\n\nNew task: " + task
-	}
-
-	nodes, err := planner.Plan(context.Background(), planExec, enrichedTask, cfg.Planner.Model, cfg.Planner.Timeout)
+	nodes, err := planner.Plan(context.Background(), planExec, task, cfg.Planner.Model, cfg.Planner.Timeout)
 	if err != nil {
 		return "", fmt.Errorf("planning failed: %w", err)
 	}
@@ -85,8 +131,6 @@ func runInteractiveTask(cfg *config.Config, task string, sessionContext string) 
 
 	fmt.Printf("%s %d steps\n", styleInfo.Render("Plan:"), len(d.Nodes))
 
-	// Execute with streaming — use bypassPermissions since user already
-	// confirmed via the REPL risk governance gate above.
 	exec := executor.New(executor.Options{
 		Model:          cfg.Claude.Model,
 		Effort:         cfg.Claude.Effort,
@@ -96,11 +140,7 @@ func runInteractiveTask(cfg *config.Config, task string, sessionContext string) 
 		PermissionMode: "bypassPermissions",
 		OnOutput: func(chunk string) {
 			text := stripJSONEnvelope(chunk)
-			for _, line := range strings.Split(text, "\n") {
-				if line != "" {
-					fmt.Println(styleDim.Render("  " + line))
-				}
-			}
+			fmt.Println(renderMarkdown(text))
 		},
 	})
 

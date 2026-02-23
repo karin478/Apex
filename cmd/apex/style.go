@@ -15,6 +15,7 @@ var (
 	styleError   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	styleInfo    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	styleDim     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	styleOutput  = lipgloss.NewStyle().Foreground(lipgloss.Color("15")) // bright white for responses
 )
 
 func renderRisk(level string) string {
