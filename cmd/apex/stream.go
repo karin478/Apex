@@ -57,13 +57,14 @@ func runInteractiveTask(cfg *config.Config, task string, sessionContext string) 
 	level, _ := sandbox.ParseLevel(cfg.Sandbox.Level)
 	sb, _ = sandbox.ForLevel(level)
 
-	// Plan
+	// Plan (planner only produces JSON task decomposition — use plan mode + low effort)
 	planExec := executor.New(executor.Options{
-		Model:   cfg.Planner.Model,
-		Effort:  "high",
-		Timeout: time.Duration(cfg.Planner.Timeout) * time.Second,
-		Binary:  cfg.Claude.Binary,
-		Sandbox: sb,
+		Model:          cfg.Planner.Model,
+		Effort:         "low",
+		Timeout:        time.Duration(cfg.Planner.Timeout) * time.Second,
+		Binary:         cfg.Claude.Binary,
+		Sandbox:        sb,
+		PermissionMode: "plan",
 	})
 
 	// Prepend session context to task for continuity
@@ -84,14 +85,15 @@ func runInteractiveTask(cfg *config.Config, task string, sessionContext string) 
 
 	fmt.Printf("%s %d steps\n", styleInfo.Render("Plan:"), len(d.Nodes))
 
-	// Execute with streaming
+	// Execute with streaming — use bypassPermissions since user already
+	// confirmed via the REPL risk governance gate above.
 	exec := executor.New(executor.Options{
 		Model:          cfg.Claude.Model,
 		Effort:         cfg.Claude.Effort,
 		Timeout:        time.Duration(cfg.Claude.Timeout) * time.Second,
 		Binary:         cfg.Claude.Binary,
 		Sandbox:        sb,
-		PermissionMode: cfg.Claude.PermissionMode,
+		PermissionMode: "bypassPermissions",
 		OnOutput: func(chunk string) {
 			text := stripJSONEnvelope(chunk)
 			for _, line := range strings.Split(text, "\n") {
