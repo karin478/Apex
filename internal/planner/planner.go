@@ -13,7 +13,12 @@ import (
 
 // complexPattern matches multi-step conjunctions that indicate a task
 // should be decomposed rather than handled as a single unit.
-var complexPattern = regexp.MustCompile(`(?i)\b(and then|then|after that|first .+ then|followed by|next|finally|step \d|phase \d)\b`)
+// Supports both English and Chinese multi-step keywords.
+var complexPattern = regexp.MustCompile(
+	`(?i)\b(and then|then|after that|first .+ then|followed by|next|finally|step \d|phase \d)\b` +
+		`|` +
+		`(先.{1,20}然后|首先.{1,20}接着|第一步|第二步|第三步|然后|接着|最后|之后|接下来)`,
+)
 
 // IsSimpleTask returns true if the task is short (under 50 words) and does
 // not contain multi-step language patterns. Simple tasks are executed as a

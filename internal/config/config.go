@@ -9,11 +9,12 @@ import (
 )
 
 type ClaudeConfig struct {
-	Model           string `yaml:"model"`
-	Effort          string `yaml:"effort"`
-	Timeout         int    `yaml:"timeout"`
-	LongTaskTimeout int    `yaml:"long_task_timeout"`
-	Binary          string `yaml:"binary"`
+	Model          string `yaml:"model"`
+	Effort         string `yaml:"effort"`
+	Timeout        int    `yaml:"timeout"`
+	LongTaskTimeout int   `yaml:"long_task_timeout"`
+	Binary         string `yaml:"binary"`
+	PermissionMode string `yaml:"permission_mode"`
 }
 
 type GovernanceConfig struct {

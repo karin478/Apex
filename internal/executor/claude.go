@@ -5,11 +5,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/lyndonlyu/apex/internal/sandbox"
 )
+
+// filterEnv returns os.Environ() with the named keys removed.
+func filterEnv(keys ...string) []string {
+	env := os.Environ()
+	result := make([]string, 0, len(env))
+	for _, e := range env {
+		skip := false
+		for _, key := range keys {
+			if strings.HasPrefix(e, key+"=") {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			result = append(result, e)
+		}
+	}
+	return result
+}
 
 // claudeJSONEnvelope represents the JSON output format of the Claude CLI
 // when invoked with --output-format json.
@@ -19,11 +40,12 @@ type claudeJSONEnvelope struct {
 }
 
 type Options struct {
-	Model   string
-	Effort  string
-	Timeout time.Duration
-	Binary  string          // defaults to "claude"
-	Sandbox sandbox.Sandbox // optional sandbox wrapper
+	Model          string
+	Effort         string
+	Timeout        time.Duration
+	Binary         string          // defaults to "claude"
+	Sandbox        sandbox.Sandbox // optional sandbox wrapper
+	PermissionMode string          // "default", "acceptEdits", "bypassPermissions", "plan"
 }
 
 type Result struct {
@@ -54,8 +76,11 @@ func (e *Executor) buildArgs(task string) []string {
 		"--model", e.opts.Model,
 		"--effort", e.opts.Effort,
 		"--output-format", "json",
-		task,
 	}
+	if e.opts.PermissionMode != "" {
+		args = append(args, "--permission-mode", e.opts.PermissionMode)
+	}
+	args = append(args, task)
 	return args
 }
 
@@ -75,6 +100,10 @@ func (e *Executor) Run(ctx context.Context, task string) (Result, error) {
 	}
 
 	cmd := exec.CommandContext(ctx, binary, args...)
+
+	// Clear CLAUDECODE env var to allow nested Claude CLI invocation
+	// (Claude Code blocks launches inside existing sessions unless unset).
+	cmd.Env = filterEnv("CLAUDECODE")
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

@@ -320,11 +320,12 @@ func runTask(cmd *cobra.Command, args []string) error {
 
 	// Execute DAG
 	exec := executor.New(executor.Options{
-		Model:   cfg.Claude.Model,
-		Effort:  cfg.Claude.Effort,
-		Timeout: time.Duration(cfg.Claude.Timeout) * time.Second,
-		Binary:  cfg.Claude.Binary,
-		Sandbox: sb,
+		Model:          cfg.Claude.Model,
+		Effort:         cfg.Claude.Effort,
+		Timeout:        time.Duration(cfg.Claude.Timeout) * time.Second,
+		Binary:         cfg.Claude.Binary,
+		Sandbox:        sb,
+		PermissionMode: cfg.Claude.PermissionMode,
 	})
 
 	runner := pool.NewClaudeRunner(exec)
