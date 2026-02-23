@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/manifest"
@@ -24,7 +23,10 @@ func init() {
 }
 
 func runDiff(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	runsDir := filepath.Join(home, ".apex", "runs")
 	store := manifest.NewStore(runsDir)
 

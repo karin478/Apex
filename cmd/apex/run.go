@@ -37,9 +37,11 @@ import (
 )
 
 var dryRun bool
+var yesFlag bool
 
 func init() {
 	runCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show execution plan and cost estimate without executing tasks (planning step still runs)")
+	runCmd.Flags().BoolVarP(&yesFlag, "yes", "y", false, "Auto-approve risk confirmations (non-interactive mode)")
 }
 
 var runCmd = &cobra.Command{
@@ -54,12 +56,30 @@ func runTask(cmd *cobra.Command, args []string) error {
 	task := args[0]
 
 	// Load config
-	home, _ := os.UserHomeDir()
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		return fmt.Errorf("cannot determine home directory: %w", homeErr)
+	}
 	configPath := filepath.Join(home, ".apex", "config.yaml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return fmt.Errorf("config error: %w", err)
 	}
+
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("config validation: %w", err)
+	}
+
+	// Wire governance policy from config
+	governance.SetPolicy(governance.Policy{
+		AutoApprove: cfg.Governance.AutoApprove,
+		Confirm:     cfg.Governance.Confirm,
+		Reject:      cfg.Governance.Reject,
+	})
+
+	// Detect non-interactive mode: --yes flag or non-TTY stdin
+	nonInteractive := yesFlag || !isTerminal()
 
 	// Ensure directories
 	if err := cfg.EnsureDirs(); err != nil {
@@ -78,7 +98,11 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 	defer sdb.Close()
 
-	wq := writerq.New(sdb.RawDB(), writerq.WithKillSwitchPath(killSwitchPath()))
+	ksPath, ksPathErr := killSwitchPath()
+	if ksPathErr != nil {
+		return fmt.Errorf("kill switch path: %w", ksPathErr)
+	}
+	wq := writerq.New(sdb.RawDB(), writerq.WithKillSwitchPath(ksPath))
 	defer wq.Close()
 	sdb.SetQueue(wq)
 
@@ -129,7 +153,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 	}
 
 	// Kill switch pre-flight check
-	ks := killswitch.New(killSwitchPath())
+	ks := killswitch.New(ksPath)
 	if ks.IsActive() {
 		return fmt.Errorf("kill switch is active at %s — use 'apex resume' to deactivate", ks.Path())
 	}
@@ -137,8 +161,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 	// Health pre-flight gate
 	report := health.Evaluate(cfg.BaseDir)
 	if report.Level == health.CRITICAL {
-		fmt.Println("[HEALTH] System health CRITICAL — run 'apex doctor' to diagnose")
-		return nil
+		return fmt.Errorf("system health CRITICAL — run 'apex doctor' to diagnose")
 	}
 
 	// Create root trace context
@@ -150,23 +173,25 @@ func runTask(cmd *cobra.Command, args []string) error {
 	fmt.Printf("[%s] Risk level: %s\n", task, risk)
 
 	if report.Level == health.RED && !risk.ShouldAutoApprove() {
-		fmt.Printf("[HEALTH] System health RED — only LOW-risk tasks allowed (task risk: %s)\n", risk)
-		return nil
+		return fmt.Errorf("system health RED — only LOW-risk tasks allowed (task risk: %s)", risk)
 	}
 
 	// Gate by risk level (CRITICAL always rejected, even in dry-run)
 	if risk.ShouldReject() {
-		fmt.Printf("Task rejected (%s risk). Break it into smaller, safer steps.\n", risk)
-		return nil
+		return fmt.Errorf("task rejected (%s risk) — break it into smaller, safer steps", risk)
 	}
 
 	if !dryRun && risk.ShouldConfirm() {
-		fmt.Printf("Warning: %s risk detected. Proceed? (y/n): ", risk)
-		var answer string
-		fmt.Scanln(&answer)
-		if answer != "y" && answer != "Y" {
-			fmt.Println("Cancelled.")
-			return nil
+		if nonInteractive {
+			fmt.Printf("Auto-approved %s risk (non-interactive mode)\n", risk)
+		} else {
+			fmt.Printf("Warning: %s risk detected. Proceed? (y/n): ", risk)
+			var answer string
+			fmt.Scanln(&answer)
+			if answer != "y" && answer != "Y" {
+				fmt.Println("Cancelled.")
+				return nil
+			}
 		}
 	}
 
@@ -588,4 +613,13 @@ func runTask(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("some steps failed, check audit log for details")
 	}
 	return nil
+}
+
+// isTerminal returns true if stdin is connected to a terminal (TTY).
+func isTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
 }

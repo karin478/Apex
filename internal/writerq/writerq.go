@@ -183,6 +183,8 @@ func (q *Queue) safeExecuteBatch(batch []Op) {
 }
 
 // executeBatch runs all ops inside a single database transaction.
+// Each operation gets its own error: a failed statement only affects itself,
+// not other operations in the batch.
 func (q *Queue) executeBatch(batch []Op) {
 	tx, err := q.db.Begin()
 	if err != nil {
@@ -192,17 +194,42 @@ func (q *Queue) executeBatch(batch []Op) {
 		return
 	}
 
-	var execErr error
+	results := make([]error, len(batch))
+	anyFailed := false
 	for i := range batch {
-		if _, execErr = tx.Exec(batch[i].SQL, batch[i].Args...); execErr != nil {
-			break
+		if _, execErr := tx.Exec(batch[i].SQL, batch[i].Args...); execErr != nil {
+			results[i] = execErr
+			anyFailed = true
 		}
 	}
 
-	if execErr != nil {
+	if anyFailed {
 		_ = tx.Rollback()
+		// Retry successful ops in a new transaction, report failed ones
+		retryTx, retryErr := q.db.Begin()
+		if retryErr != nil {
+			for i := range batch {
+				if results[i] == nil {
+					results[i] = retryErr
+				}
+				batch[i].result <- results[i]
+			}
+			return
+		}
 		for i := range batch {
-			batch[i].result <- execErr
+			if results[i] == nil {
+				if _, execErr := retryTx.Exec(batch[i].SQL, batch[i].Args...); execErr != nil {
+					results[i] = execErr
+				}
+			}
+		}
+		commitErr := retryTx.Commit()
+		for i := range batch {
+			if results[i] == nil {
+				batch[i].result <- commitErr
+			} else {
+				batch[i].result <- results[i]
+			}
 		}
 		return
 	}

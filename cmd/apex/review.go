@@ -39,7 +39,10 @@ func (r *executorRunner) RunTask(ctx context.Context, task string) (string, erro
 func runReview(cmd *cobra.Command, args []string) error {
 	proposal := args[0]
 
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	configPath := filepath.Join(home, ".apex", "config.yaml")
 	cfg, err := config.Load(configPath)
 	if err != nil {

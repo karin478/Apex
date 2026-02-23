@@ -13,6 +13,11 @@ func TestClassifyLow(t *testing.T) {
 		"search for TODO comments",
 		"list all go files",
 		"run the tests",
+		"write unit tests",       // was MEDIUM before — "write" alone shouldn't trigger
+		"add a comment",          // was MEDIUM before — "add" alone shouldn't trigger
+		"create a PR",            // was MEDIUM before — "create" alone without file/dir context
+		"analyze code quality",
+		"compare SQLite DELETE mode with WAL mode", // technical usage, not destructive
 	}
 	for _, task := range tests {
 		assert.Equal(t, LOW, Classify(task), "task: %s", task)
@@ -21,13 +26,15 @@ func TestClassifyLow(t *testing.T) {
 
 func TestClassifyMedium(t *testing.T) {
 	tests := []string{
-		"write a new function for parsing",
-		"modify the config file",
-		"install the cobra package",
-		"update the README",
-		"create a new test file",
+		"write to the config file",
+		"modify config settings",
+		"install package cobra",
+		"update config for staging",
+		"create file handler.go",
+		"edit file main.go",
 		"修改配置文件",
-		"安装依赖",
+		"安装依赖包",
+		"overwrite the output",
 	}
 	for _, task := range tests {
 		assert.Equal(t, MEDIUM, Classify(task), "task: %s", task)
@@ -36,13 +43,14 @@ func TestClassifyMedium(t *testing.T) {
 
 func TestClassifyHigh(t *testing.T) {
 	tests := []string{
-		"delete the old migration files",
-		"deploy to staging",
-		"drop the users table",
+		"delete from users where active = false",
+		"deploy the new version",
+		"drop table users",
 		"migrate the database schema",
 		"rm -rf the temp directory",
-		"删除旧数据",
-		"部署到生产",
+		"删除数据库备份",
+		"部署到生产环境",
+		"force push to main",
 	}
 	for _, task := range tests {
 		assert.Equal(t, HIGH, Classify(task), "task: %s", task)
@@ -60,8 +68,8 @@ func TestClassifyCritical(t *testing.T) {
 }
 
 func TestClassifyCaseInsensitive(t *testing.T) {
-	assert.Equal(t, HIGH, Classify("DELETE all temp files"))
-	assert.Equal(t, MEDIUM, Classify("WRITE a new module"))
+	assert.Equal(t, HIGH, Classify("DELETE FROM users"))
+	assert.Equal(t, MEDIUM, Classify("WRITE TO config"))
 }
 
 func TestRiskLevelString(t *testing.T) {
@@ -71,30 +79,56 @@ func TestRiskLevelString(t *testing.T) {
 	assert.Equal(t, "CRITICAL", CRITICAL.String())
 }
 
-func TestShouldAutoApprove(t *testing.T) {
+func TestParseRiskLevel(t *testing.T) {
+	assert.Equal(t, LOW, ParseRiskLevel("LOW"))
+	assert.Equal(t, MEDIUM, ParseRiskLevel("medium"))
+	assert.Equal(t, HIGH, ParseRiskLevel("High"))
+	assert.Equal(t, CRITICAL, ParseRiskLevel("CRITICAL"))
+	assert.Equal(t, LOW, ParseRiskLevel("unknown"))
+}
+
+func TestDefaultPolicy(t *testing.T) {
+	// Reset to default
+	SetPolicy(DefaultPolicy())
+	defer SetPolicy(DefaultPolicy())
+
 	assert.True(t, LOW.ShouldAutoApprove())
 	assert.False(t, MEDIUM.ShouldAutoApprove())
 	assert.False(t, HIGH.ShouldAutoApprove())
 	assert.False(t, CRITICAL.ShouldAutoApprove())
-}
 
-func TestShouldConfirm(t *testing.T) {
 	assert.False(t, LOW.ShouldConfirm())
 	assert.True(t, MEDIUM.ShouldConfirm())
 	assert.False(t, HIGH.ShouldConfirm())
 	assert.False(t, CRITICAL.ShouldConfirm())
-}
 
-func TestShouldReject(t *testing.T) {
 	assert.False(t, LOW.ShouldReject())
 	assert.False(t, MEDIUM.ShouldReject())
 	assert.False(t, HIGH.ShouldReject())
 	assert.True(t, CRITICAL.ShouldReject())
-}
 
-func TestShouldRequireApproval(t *testing.T) {
 	assert.False(t, LOW.ShouldRequireApproval())
 	assert.False(t, MEDIUM.ShouldRequireApproval())
 	assert.True(t, HIGH.ShouldRequireApproval())
 	assert.False(t, CRITICAL.ShouldRequireApproval())
+}
+
+func TestCustomPolicy(t *testing.T) {
+	SetPolicy(Policy{
+		AutoApprove: []string{"LOW", "MEDIUM"},
+		Confirm:     []string{"HIGH"},
+		Reject:      []string{"CRITICAL"},
+	})
+	defer SetPolicy(DefaultPolicy())
+
+	assert.True(t, MEDIUM.ShouldAutoApprove())
+	assert.True(t, HIGH.ShouldConfirm())
+	assert.False(t, HIGH.ShouldRequireApproval())
+}
+
+func TestContainsWord(t *testing.T) {
+	assert.True(t, containsWord("deploy the app", "deploy"))
+	assert.False(t, containsWord("redeployment", "deploy"))
+	assert.True(t, containsWord("migrate data", "migrate"))
+	assert.False(t, containsWord("immigration policy", "migrate"))
 }

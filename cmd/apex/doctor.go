@@ -25,7 +25,10 @@ var doctorCmd = &cobra.Command{
 }
 
 func runDoctor(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	auditDir := filepath.Join(home, ".apex", "audit")
 
 	fmt.Println("Apex Doctor")

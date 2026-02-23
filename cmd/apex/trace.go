@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/audit"
@@ -18,7 +17,10 @@ var traceCmd = &cobra.Command{
 }
 
 func showTrace(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	baseDir := filepath.Join(home, ".apex")
 	runsDir := filepath.Join(baseDir, "runs")
 	auditDir := filepath.Join(baseDir, "audit")
@@ -26,12 +28,12 @@ func showTrace(cmd *cobra.Command, args []string) error {
 	store := manifest.NewStore(runsDir)
 
 	var m *manifest.Manifest
-	var err error
+	var loadErr error
 
 	if len(args) > 0 {
-		m, err = store.Load(args[0])
-		if err != nil {
-			return fmt.Errorf("failed to load run %s: %w", args[0], err)
+		m, loadErr = store.Load(args[0])
+		if loadErr != nil {
+			return fmt.Errorf("failed to load run %s: %w", args[0], loadErr)
 		}
 	} else {
 		recent, recentErr := store.Recent(1)

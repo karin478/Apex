@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/config"
@@ -20,7 +19,10 @@ var redactTestCmd = &cobra.Command{
 	Short: "Test redaction rules against input text",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		home, _ := os.UserHomeDir()
+		home, err := homeDir()
+		if err != nil {
+			return err
+		}
 		cfgPath := filepath.Join(home, ".apex", "config.yaml")
 		cfg, err := config.Load(cfgPath)
 		if err != nil {

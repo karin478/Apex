@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
-
-	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/lyndonlyu/apex/internal/redact"
@@ -69,6 +69,7 @@ type Logger struct {
 	dir      string
 	lastHash string
 	redactor *redact.Redactor
+	mu       sync.Mutex
 }
 
 func NewLogger(dir string) (*Logger, error) {
@@ -119,6 +120,9 @@ func computeHash(r Record) string {
 }
 
 func (l *Logger) Log(entry Entry) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	actionID := entry.ActionID
 	if actionID == "" {
 		actionID = uuid.New().String()

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/gc"
@@ -31,7 +30,10 @@ func init() {
 }
 
 func runGC(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	baseDir := filepath.Join(home, ".apex")
 
 	policy := gc.Policy{

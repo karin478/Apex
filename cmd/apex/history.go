@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/audit"
@@ -22,7 +21,10 @@ func init() {
 }
 
 func showHistory(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	auditDir := filepath.Join(home, ".apex", "audit")
 
 	logger, err := audit.NewLogger(auditDir)

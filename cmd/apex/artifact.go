@@ -62,19 +62,22 @@ func init() {
 }
 
 func listArtifacts(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	store := artifact.NewStore(filepath.Join(home, ".apex", "artifacts"))
 
 	var arts []*artifact.Artifact
-	var err error
+	var listErr error
 
 	if artifactRunFilter != "" {
-		arts, err = store.ListByRun(artifactRunFilter)
+		arts, listErr = store.ListByRun(artifactRunFilter)
 	} else {
-		arts, err = store.List()
+		arts, listErr = store.List()
 	}
-	if err != nil {
-		return fmt.Errorf("artifact list: %w", err)
+	if listErr != nil {
+		return fmt.Errorf("artifact list: %w", listErr)
 	}
 
 	if len(arts) == 0 {
@@ -98,7 +101,10 @@ func listArtifacts(cmd *cobra.Command, args []string) error {
 }
 
 func infoArtifact(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	store := artifact.NewStore(filepath.Join(home, ".apex", "artifacts"))
 
 	a, err := store.Get(args[0])
@@ -116,7 +122,10 @@ func infoArtifact(cmd *cobra.Command, args []string) error {
 }
 
 func gcArtifacts(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	artStore := artifact.NewStore(filepath.Join(home, ".apex", "artifacts"))
 	manStore := manifest.NewStore(filepath.Join(home, ".apex", "runs"))
 
@@ -161,7 +170,10 @@ func gcArtifacts(cmd *cobra.Command, args []string) error {
 }
 
 func impactArtifact(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	artDir := filepath.Join(home, ".apex", "artifacts")
 
 	lg, err := artifact.NewLineageGraph(artDir)
@@ -180,7 +192,10 @@ func impactArtifact(cmd *cobra.Command, args []string) error {
 }
 
 func depsArtifact(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	artDir := filepath.Join(home, ".apex", "artifacts")
 
 	lg, err := artifact.NewLineageGraph(artDir)

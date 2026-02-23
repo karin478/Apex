@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -22,13 +21,20 @@ var resumeCmd = &cobra.Command{
 	RunE:  deactivateKillSwitch,
 }
 
-func killSwitchPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude", "KILL_SWITCH")
+func killSwitchPath() (string, error) {
+	home, err := homeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".claude", "KILL_SWITCH"), nil
 }
 
 func activateKillSwitch(cmd *cobra.Command, args []string) error {
-	w := killswitch.New(killSwitchPath())
+	ksPath, err := killSwitchPath()
+	if err != nil {
+		return err
+	}
+	w := killswitch.New(ksPath)
 
 	if w.IsActive() {
 		fmt.Printf("Kill switch already active at %s\n", w.Path())
@@ -52,7 +58,11 @@ func activateKillSwitch(cmd *cobra.Command, args []string) error {
 }
 
 func deactivateKillSwitch(cmd *cobra.Command, args []string) error {
-	w := killswitch.New(killSwitchPath())
+	ksPath, err := killSwitchPath()
+	if err != nil {
+		return err
+	}
+	w := killswitch.New(ksPath)
 
 	if !w.IsActive() {
 		fmt.Println("No kill switch active.")

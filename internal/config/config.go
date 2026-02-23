@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -73,7 +74,10 @@ type Config struct {
 }
 
 func Default() *Config {
-	home, _ := os.UserHomeDir()
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "/tmp"
+	}
 	return &Config{
 		Claude: ClaudeConfig{
 			Model:           "claude-opus-4-6",
@@ -210,7 +214,10 @@ func Load(path string) (*Config, error) {
 		cfg.Redaction.RedactIPs = "private_only"
 	}
 	if cfg.BaseDir == "" {
-		home, _ := os.UserHomeDir()
+		home, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			home = "/tmp"
+		}
 		cfg.BaseDir = filepath.Join(home, ".apex")
 	}
 
@@ -219,6 +226,31 @@ func Load(path string) (*Config, error) {
 
 func (c *Config) ApexDir() string {
 	return c.BaseDir
+}
+
+// Validate checks configuration values for sanity. Returns an error if any
+// value is out of acceptable range.
+func (c *Config) Validate() error {
+	if c.Pool.MaxConcurrent < 1 || c.Pool.MaxConcurrent > 64 {
+		return fmt.Errorf("pool.max_concurrent must be 1-64, got %d", c.Pool.MaxConcurrent)
+	}
+	if c.Retry.MaxAttempts < 1 || c.Retry.MaxAttempts > 20 {
+		return fmt.Errorf("retry.max_attempts must be 1-20, got %d", c.Retry.MaxAttempts)
+	}
+	if c.Retry.Multiplier < 1.0 || c.Retry.Multiplier > 10.0 {
+		return fmt.Errorf("retry.multiplier must be 1.0-10.0, got %.1f", c.Retry.Multiplier)
+	}
+	if c.Claude.Timeout < 10 || c.Claude.Timeout > 86400 {
+		return fmt.Errorf("claude.timeout must be 10-86400, got %d", c.Claude.Timeout)
+	}
+	if c.Context.TokenBudget < 1000 || c.Context.TokenBudget > 1000000 {
+		return fmt.Errorf("context.token_budget must be 1000-1000000, got %d", c.Context.TokenBudget)
+	}
+	validSandbox := map[string]bool{"auto": true, "docker": true, "ulimit": true, "none": true}
+	if !validSandbox[c.Sandbox.Level] {
+		return fmt.Errorf("sandbox.level must be auto/docker/ulimit/none, got %q", c.Sandbox.Level)
+	}
+	return nil
 }
 
 func (c *Config) EnsureDirs() error {

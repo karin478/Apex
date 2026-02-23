@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lyndonlyu/apex/internal/memory"
 )
 
@@ -49,7 +50,7 @@ func New(db *sql.DB, store *memory.Store) (*Stager, error) {
 
 // Stage inserts a new memory candidate into the staging pipeline.
 func (s *Stager) Stage(content, category, source string) (string, error) {
-	id := fmt.Sprintf("stg-%d", time.Now().UnixNano())
+	id := fmt.Sprintf("stg-%s", uuid.New().String())
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.Exec(
 		`INSERT INTO staging_memories (id, content, category, source, staging_state, confidence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,

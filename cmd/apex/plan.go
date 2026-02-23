@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -26,7 +25,10 @@ func planTask(cmd *cobra.Command, args []string) error {
 	task := args[0]
 
 	// Load config
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	configPath := filepath.Join(home, ".apex", "config.yaml")
 	cfg, err := config.Load(configPath)
 	if err != nil {

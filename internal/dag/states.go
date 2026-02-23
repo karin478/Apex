@@ -117,10 +117,18 @@ func (d *DAG) Skip(id string) error {
 	return nil
 }
 
-// cascadeSkip recursively marks all Pending/Blocked dependents as Skipped.
+// cascadeSkip marks all Pending/Blocked dependents as Skipped.
 // Must be called with mu held.
 func (d *DAG) cascadeSkip(cancelledID string) {
+	visited := make(map[string]bool)
+	d.cascadeSkipImpl(cancelledID, visited)
+}
+
+func (d *DAG) cascadeSkipImpl(cancelledID string, visited map[string]bool) {
 	for _, n := range d.Nodes {
+		if visited[n.ID] {
+			continue
+		}
 		if n.Status != Pending && n.Status != Blocked {
 			continue
 		}
@@ -128,7 +136,8 @@ func (d *DAG) cascadeSkip(cancelledID string) {
 			if dep == cancelledID || (d.Nodes[dep] != nil && (d.Nodes[dep].Status == Cancelled || d.Nodes[dep].Status == Skipped)) {
 				n.Status = Skipped
 				n.Error = fmt.Sprintf("dependency %q was cancelled", dep)
-				d.cascadeSkip(n.ID)
+				visited[n.ID] = true
+				d.cascadeSkipImpl(n.ID, visited)
 				break
 			}
 		}

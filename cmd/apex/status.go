@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/health"
@@ -26,7 +25,10 @@ func showStatus(cmd *cobra.Command, args []string) error {
 	if statusLast < 1 {
 		return fmt.Errorf("--last must be at least 1, got %d", statusLast)
 	}
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	baseDir := filepath.Join(home, ".apex")
 	report := health.Evaluate(baseDir)
 	fmt.Printf("System Health: %s\n\n", report.Level)

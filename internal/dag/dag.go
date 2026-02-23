@@ -201,10 +201,18 @@ func (d *DAG) MarkFailed(id string, errMsg string) {
 	d.cascadeFail(id)
 }
 
-// cascadeFail recursively marks all pending/blocked nodes that depend (directly or
+// cascadeFail marks all pending/blocked nodes that depend (directly or
 // transitively) on the failed node as Failed. Must be called with mu held.
 func (d *DAG) cascadeFail(failedID string) {
+	visited := make(map[string]bool)
+	d.cascadeFailImpl(failedID, visited)
+}
+
+func (d *DAG) cascadeFailImpl(failedID string, visited map[string]bool) {
 	for _, n := range d.Nodes {
+		if visited[n.ID] {
+			continue
+		}
 		if n.Status != Pending && n.Status != Blocked {
 			continue
 		}
@@ -212,7 +220,8 @@ func (d *DAG) cascadeFail(failedID string) {
 			if dep == failedID || (d.Nodes[dep] != nil && d.Nodes[dep].Status == Failed) {
 				n.Status = Failed
 				n.Error = fmt.Sprintf("dependency %q failed", dep)
-				d.cascadeFail(n.ID)
+				visited[n.ID] = true
+				d.cascadeFailImpl(n.ID, visited)
 				break
 			}
 		}
@@ -244,17 +253,25 @@ func (d *DAG) HasFailure() bool {
 }
 
 // Summary returns a human-readable summary of all node statuses. Thread-safe.
+// Output is sorted by node ID for deterministic ordering.
 func (d *DAG) Summary() string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+
+	ids := make([]string, 0, len(d.Nodes))
+	for id := range d.Nodes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
 	var lines []string
-	for _, n := range d.Nodes {
+	for _, id := range ids {
+		n := d.Nodes[id]
 		line := fmt.Sprintf("  [%s] task: %s", n.Status, n.Task)
 		if n.Error != "" {
 			line += fmt.Sprintf(" (error: %s)", n.Error)
 		}
 		if n.Result != "" {
-			// Truncate long results for readability.
 			result := n.Result
 			if len(result) > 500 {
 				result = result[:500] + "..."

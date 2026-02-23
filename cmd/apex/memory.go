@@ -39,7 +39,10 @@ func init() {
 }
 
 func loadSearchDeps() (*config.Config, *memory.Store, *vectordb.VectorDB, *embedding.Client, error) {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
 	configPath := filepath.Join(home, ".apex", "config.yaml")
 	cfg, err := config.Load(configPath)
 	if err != nil {

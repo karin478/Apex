@@ -50,22 +50,32 @@ func TestAnchorUpdatedOnSecondRun(t *testing.T) {
 	// First run
 	env.runApex("run", "say hello")
 
+	// Capture baseline record count after first run
+	anchorPath := filepath.Join(env.auditDir(), "anchors.jsonl")
+	data1, err := os.ReadFile(anchorPath)
+	require.NoError(t, err)
+	lines1 := strings.Split(strings.TrimSpace(string(data1)), "\n")
+	require.Len(t, lines1, 1, "should have 1 anchor after first run")
+	var anchor1 struct {
+		RecordCount int `json:"record_count"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(lines1[0]), &anchor1))
+	require.Greater(t, anchor1.RecordCount, 0, "first run should produce at least 1 record")
+
 	// Second run
 	env.runApex("run", "say goodbye")
 
 	// Should still have 1 anchor (updated, not duplicated)
-	anchorPath := filepath.Join(env.auditDir(), "anchors.jsonl")
-	data, err := os.ReadFile(anchorPath)
+	data2, err := os.ReadFile(anchorPath)
 	require.NoError(t, err)
+	lines2 := strings.Split(strings.TrimSpace(string(data2)), "\n")
+	assert.Len(t, lines2, 1, "should have 1 anchor, not 2")
 
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	assert.Len(t, lines, 1, "should have 1 anchor, not 2")
-
-	var anchor struct {
+	var anchor2 struct {
 		RecordCount int `json:"record_count"`
 	}
-	json.Unmarshal([]byte(lines[0]), &anchor)
-	assert.Equal(t, 2, anchor.RecordCount, "anchor should reflect both runs")
+	require.NoError(t, json.Unmarshal([]byte(lines2[0]), &anchor2))
+	assert.Equal(t, anchor1.RecordCount+1, anchor2.RecordCount, "second run should add exactly 1 record")
 }
 
 // TestAnchorGitTag verifies that a git tag is created in the working directory.

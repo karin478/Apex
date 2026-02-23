@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -62,13 +63,25 @@ func (m *Manager) Restore(runID string) error {
 	if err != nil {
 		return err
 	}
-	// Discard any local changes so the stash can be applied cleanly.
-	if out, err := m.git("checkout", "--", "."); err != nil {
-		return fmt.Errorf("git checkout failed: %w: %s", err, out)
+	// Save current working tree state before restoring, so user work isn't lost.
+	safeMsg := fmt.Sprintf("apex-pre-restore-%s-%s", runID, time.Now().UTC().Format("20060102T150405Z"))
+	stashOut, stashErr := m.git("stash", "push", "--include-untracked", "-m", safeMsg)
+	hadChanges := stashErr == nil && !strings.Contains(stashOut, "No local changes")
+	if hadChanges {
+		// The stash indices shifted by 1 since we just pushed a new stash.
+		idx++
 	}
 	out, err := m.git("stash", "pop", fmt.Sprintf("stash@{%d}", idx))
 	if err != nil {
+		// If restore fails and we stashed, recover the saved state.
+		if hadChanges {
+			m.git("stash", "pop", "stash@{0}")
+		}
 		return fmt.Errorf("git stash pop failed: %w: %s", err, out)
+	}
+	// If we saved current state, inform the user how to recover it.
+	if hadChanges {
+		fmt.Fprintf(os.Stderr, "Pre-restore working state saved as stash: %s\n", safeMsg)
 	}
 	return nil
 }

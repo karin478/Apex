@@ -101,7 +101,7 @@ func TestDockerBackend(t *testing.T) {
 	assert.Contains(t, joined, "--network=none")
 	assert.Contains(t, joined, "--memory=2g")
 	assert.Contains(t, joined, "--cpus=2")
-	assert.Contains(t, joined, "-v /tmp/test-workspace:/workspace:rw")
+	assert.Contains(t, joined, "-v /tmp/test-workspace:/workspace:ro")
 	assert.Contains(t, joined, "-w /workspace")
 	assert.Contains(t, joined, "ubuntu:22.04")
 	assert.Contains(t, joined, "claude")

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -19,7 +18,10 @@ var auditPolicyCmd = &cobra.Command{
 }
 
 func showAuditPolicy(cmd *cobra.Command, args []string) error {
-	home, _ := os.UserHomeDir()
+	home, err := homeDir()
+	if err != nil {
+		return err
+	}
 	auditDir := filepath.Join(home, ".apex", "audit")
 
 	logger, err := audit.NewLogger(auditDir)

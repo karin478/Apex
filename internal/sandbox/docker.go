@@ -38,7 +38,7 @@ func (d *DockerSandbox) Wrap(_ context.Context, binary string, args []string) (s
 		"--network=none",
 		"--memory=" + mem,
 		"--cpus=" + cpu,
-		"-v", workdir + ":/workspace:rw",
+		"-v", workdir + ":/workspace:ro",
 		"-w", "/workspace",
 		image,
 		binary,

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/lyndonlyu/apex/internal/plugin"
@@ -55,13 +54,20 @@ func init() {
 	pluginCmd.AddCommand(pluginVerifyCmd)
 }
 
-func pluginsDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".apex", "plugins")
+func pluginsDir() (string, error) {
+	home, err := homeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".apex", "plugins"), nil
 }
 
 func pluginScan(cmd *cobra.Command, args []string) error {
-	reg := plugin.NewRegistry(pluginsDir())
+	pDir, err := pluginsDir()
+	if err != nil {
+		return err
+	}
+	reg := plugin.NewRegistry(pDir)
 	plugins, err := reg.Scan()
 	if err != nil {
 		return fmt.Errorf("scan failed: %w", err)
@@ -74,14 +80,18 @@ func pluginScan(cmd *cobra.Command, args []string) error {
 }
 
 func pluginList(cmd *cobra.Command, args []string) error {
-	reg := plugin.NewRegistry(pluginsDir())
+	pDir, err := pluginsDir()
+	if err != nil {
+		return err
+	}
+	reg := plugin.NewRegistry(pDir)
 	if _, err := reg.Scan(); err != nil {
 		return err
 	}
 	plugins := reg.List()
 	if len(plugins) == 0 {
 		fmt.Println("No plugins found.")
-		fmt.Printf("Place plugins in %s/\n", pluginsDir())
+		fmt.Printf("Place plugins in %s/\n", pDir)
 		return nil
 	}
 
@@ -99,7 +109,11 @@ func pluginList(cmd *cobra.Command, args []string) error {
 }
 
 func pluginEnable(cmd *cobra.Command, args []string) error {
-	reg := plugin.NewRegistry(pluginsDir())
+	pDir, err := pluginsDir()
+	if err != nil {
+		return err
+	}
+	reg := plugin.NewRegistry(pDir)
 	if _, err := reg.Scan(); err != nil {
 		return err
 	}
@@ -111,7 +125,11 @@ func pluginEnable(cmd *cobra.Command, args []string) error {
 }
 
 func pluginDisable(cmd *cobra.Command, args []string) error {
-	reg := plugin.NewRegistry(pluginsDir())
+	pDir, err := pluginsDir()
+	if err != nil {
+		return err
+	}
+	reg := plugin.NewRegistry(pDir)
 	if _, err := reg.Scan(); err != nil {
 		return err
 	}
@@ -123,7 +141,11 @@ func pluginDisable(cmd *cobra.Command, args []string) error {
 }
 
 func pluginVerify(cmd *cobra.Command, args []string) error {
-	reg := plugin.NewRegistry(pluginsDir())
+	pDir, err := pluginsDir()
+	if err != nil {
+		return err
+	}
+	reg := plugin.NewRegistry(pDir)
 	if _, err := reg.Scan(); err != nil {
 		return err
 	}
