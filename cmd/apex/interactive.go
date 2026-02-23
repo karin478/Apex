@@ -49,11 +49,11 @@ func (s *session) context() string {
 
 func printBanner(cfg *config.Config) {
 	cwd, _ := os.Getwd()
-	title := styleBannerTitle.Render("◆ Apex v0.1.0")
-	info := styleBannerInfo.Render(fmt.Sprintf("%s · %s · %s", cfg.Claude.Model, cfg.Sandbox.Level, cwd))
-	box := styleBannerBox.Render(title + "\n" + info)
-	fmt.Println(box)
-	fmt.Println(styleInfo.Render("  /help for commands · /quit to exit"))
+	fmt.Println()
+	fmt.Println(styleBannerTitle.Render("  ◆ Apex v0.1.0"))
+	fmt.Println(styleBannerInfo.Render(fmt.Sprintf("  %s · %s · %s", cfg.Claude.Model, cfg.Sandbox.Level, cwd)))
+	fmt.Println()
+	fmt.Println(styleDim.Render("  /help for commands · /quit to exit · Tab for autocomplete"))
 	fmt.Println()
 }
 
