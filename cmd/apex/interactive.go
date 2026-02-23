@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/lyndonlyu/apex/internal/config"
 	"github.com/lyndonlyu/apex/internal/governance"
 	"github.com/lyndonlyu/apex/internal/memory"
@@ -14,8 +15,11 @@ import (
 )
 
 type session struct {
-	cfg   *config.Config
-	turns []turn
+	cfg         *config.Config
+	turns       []turn
+	lastOutput  string
+	attachments []string
+	home        string
 }
 
 type turn struct {
@@ -41,6 +45,16 @@ func (s *session) context() string {
 		parts = append(parts, fmt.Sprintf("Task: %s\nResult: %s", t.task, summary))
 	}
 	return strings.Join(parts, "\n---\n")
+}
+
+func printBanner(cfg *config.Config) {
+	cwd, _ := os.Getwd()
+	title := styleBannerTitle.Render("◆ Apex v0.1.0")
+	info := styleBannerInfo.Render(fmt.Sprintf("%s · %s · %s", cfg.Claude.Model, cfg.Sandbox.Level, cwd))
+	box := styleBannerBox.Render(title + "\n" + info)
+	fmt.Println(box)
+	fmt.Println(styleInfo.Render("  /help for commands · /quit to exit"))
+	fmt.Println()
 }
 
 func startInteractive(cmd *cobra.Command, args []string) error {
@@ -71,40 +85,94 @@ func startInteractive(cmd *cobra.Command, args []string) error {
 		Reject:      cfg.Governance.Reject,
 	})
 
-	s := &session{cfg: cfg}
+	s := &session{cfg: cfg, home: home}
 
-	// Banner
-	fmt.Println(styleBanner.Render(fmt.Sprintf(
-		"apex v0.1.0 · %s · %s",
-		cfg.Claude.Model, cfg.Sandbox.Level,
-	)))
-	fmt.Println(styleInfo.Render("Type a task, /help for commands, /quit to exit"))
-	fmt.Println()
+	printBanner(cfg)
 
-	scanner := bufio.NewScanner(os.Stdin)
+	completer := buildCompleter()
+
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          stylePrompt.Render("❯ "),
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+		HistoryFile:     filepath.Join(home, ".apex", "history"),
+		AutoComplete:    completer,
+	})
+	if err != nil {
+		return fmt.Errorf("readline init: %w", err)
+	}
+	defer rl.Close()
+
 	for {
-		fmt.Print(stylePrompt.Render("apex> "))
-		if !scanner.Scan() {
-			break // EOF (Ctrl+D)
+		line, err := rl.Readline()
+		if err == readline.ErrInterrupt {
+			continue // Ctrl+C: ignore, show new prompt
 		}
-		input := strings.TrimSpace(scanner.Text())
+		if err == io.EOF {
+			break // Ctrl+D: exit
+		}
+		if err != nil {
+			break
+		}
+
+		input := strings.TrimSpace(line)
 		if input == "" {
 			continue
 		}
 
-		// Slash commands
-		if strings.HasPrefix(input, "/") {
-			if s.handleSlash(input) {
-				break // /quit or /exit
+		// Shell escape
+		if strings.HasPrefix(input, "!") {
+			shellCmd := strings.TrimSpace(input[1:])
+			if shellCmd == "" {
+				fmt.Println(styleInfo.Render("  Usage: !<command>"))
+				fmt.Println()
+			} else {
+				runShellCommand(shellCmd)
 			}
 			continue
 		}
 
-		// Execute task
-		summary, err := runInteractiveTask(s.cfg, input, s.context())
-		if err != nil {
-			fmt.Println(styleError.Render("Error: " + err.Error()))
+		// Slash commands via registry
+		if strings.HasPrefix(input, "/") {
+			fields := strings.Fields(input[1:])
+			if len(fields) == 0 {
+				continue
+			}
+			cmdName := fields[0]
+			cmdArgs := strings.TrimSpace(strings.TrimPrefix(input[1:], cmdName))
+			sc := findCommand(cmdName)
+			if sc == nil {
+				fmt.Println(styleError.Render("Unknown command. Type /help for available commands."))
+				fmt.Println()
+			} else if sc.handler(s, cmdArgs, rl) {
+				break
+			}
+			continue
 		}
+
+		// Prepend attached file contents to task
+		taskInput := input
+		if len(s.attachments) > 0 {
+			var fileParts []string
+			for _, path := range s.attachments {
+				data, readErr := os.ReadFile(path)
+				if readErr == nil {
+					fileParts = append(fileParts, fmt.Sprintf("--- File: %s ---\n%s", path, string(data)))
+				}
+			}
+			if len(fileParts) > 0 {
+				taskInput = strings.Join(fileParts, "\n") + "\n\n" + input
+			}
+			s.attachments = nil
+		}
+
+		// Execute task
+		fmt.Println() // blank line after input
+		summary, err := runInteractiveTask(s.cfg, taskInput, s.context())
+		if err != nil {
+			fmt.Println(styleError.Render("  Error: " + err.Error()))
+		}
+		s.lastOutput = summary
 		s.turns = append(s.turns, turn{task: input, summary: summary})
 		fmt.Println()
 	}
@@ -113,52 +181,6 @@ func startInteractive(cmd *cobra.Command, args []string) error {
 	s.saveSession()
 	fmt.Println(styleInfo.Render("Session saved. Goodbye!"))
 	return nil
-}
-
-// handleSlash processes slash commands. Returns true if the session should exit.
-func (s *session) handleSlash(input string) bool {
-	switch strings.ToLower(strings.Fields(input)[0]) {
-	case "/help":
-		fmt.Println(styleBanner.Render("Commands:"))
-		cmds := [][2]string{
-			{"/help", "Show available commands"},
-			{"/status", "Show recent run history"},
-			{"/history", "Show task execution history"},
-			{"/doctor", "Run system integrity check"},
-			{"/clear", "Clear screen"},
-			{"/config", "Show current config summary"},
-			{"/quit", "Exit session"},
-		}
-		for _, c := range cmds {
-			fmt.Printf("  %-12s %s\n", stylePrompt.Render(c[0]), c[1])
-		}
-	case "/status":
-		if err := showStatus(nil, nil); err != nil {
-			fmt.Println(styleError.Render("Error: " + err.Error()))
-		}
-	case "/history":
-		if err := showHistory(nil, nil); err != nil {
-			fmt.Println(styleError.Render("Error: " + err.Error()))
-		}
-	case "/doctor":
-		if err := runDoctor(nil, nil); err != nil {
-			fmt.Println(styleError.Render("Error: " + err.Error()))
-		}
-	case "/clear":
-		fmt.Print("\033[H\033[2J")
-	case "/config":
-		fmt.Printf("Model:   %s\n", s.cfg.Claude.Model)
-		fmt.Printf("Effort:  %s\n", s.cfg.Claude.Effort)
-		fmt.Printf("Sandbox: %s\n", s.cfg.Sandbox.Level)
-		fmt.Printf("Pool:    %d workers\n", s.cfg.Pool.MaxConcurrent)
-	case "/quit", "/exit":
-		s.saveSession()
-		return true
-	default:
-		fmt.Println(styleError.Render("Unknown command. Type /help for available commands."))
-	}
-	fmt.Println()
-	return false
 }
 
 func (s *session) saveSession() {
