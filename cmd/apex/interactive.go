@@ -47,6 +47,20 @@ func (s *session) context() string {
 	return strings.Join(parts, "\n---\n")
 }
 
+func (s *session) printStatusLine() {
+	ctx := s.context()
+	ctxLen := len(ctx)
+	var ctxStr string
+	if ctxLen > 1000 {
+		ctxStr = fmt.Sprintf("%.1fk chars", float64(ctxLen)/1000)
+	} else {
+		ctxStr = fmt.Sprintf("%d chars", ctxLen)
+	}
+	line := fmt.Sprintf("  %s · context: %s · %d turns · %s",
+		s.cfg.Claude.Model, ctxStr, len(s.turns), s.cfg.Sandbox.Level)
+	fmt.Println(styleDim.Render(line))
+}
+
 func printBanner(cfg *config.Config) {
 	cwd, _ := os.Getwd()
 	fmt.Println()
@@ -104,6 +118,9 @@ func startInteractive(cmd *cobra.Command, args []string) error {
 	defer rl.Close()
 
 	for {
+		if len(s.turns) > 0 {
+			s.printStatusLine()
+		}
 		line, err := rl.Readline()
 		if err == readline.ErrInterrupt {
 			continue // Ctrl+C: ignore, show new prompt

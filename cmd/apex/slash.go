@@ -17,6 +17,7 @@ import (
 type slashCmd struct {
 	name    string
 	aliases []string
+	group   string
 	desc    string
 	handler func(s *session, args string, rl *readline.Instance) bool
 }
@@ -28,45 +29,46 @@ var slashCommands []slashCmd
 func init() {
 	slashCommands = []slashCmd{
 		// Session
-		{name: "help", desc: "Show available commands", handler: cmdHelp},
-		{name: "new", desc: "Start a new session (clear context)", handler: cmdNew},
-		{name: "compact", desc: "Compact session context", handler: cmdCompact},
-		{name: "copy", desc: "Copy last output to clipboard", handler: cmdCopy},
-		{name: "export", desc: "Export session to markdown", handler: cmdExport},
-		{name: "clear", desc: "Clear screen", handler: cmdClear},
+		{name: "help", group: "Session", desc: "Show available commands", handler: cmdHelp},
+		{name: "new", group: "Session", desc: "Start a new session (clear context)", handler: cmdNew},
+		{name: "compact", group: "Session", desc: "Compact session context", handler: cmdCompact},
+		{name: "copy", group: "Session", desc: "Copy last output to clipboard", handler: cmdCopy},
+		{name: "export", group: "Session", desc: "Export session to markdown", handler: cmdExport},
+		{name: "clear", group: "Session", desc: "Clear screen", handler: cmdClear},
 
 		// Config
-		{name: "model", desc: "Show or set model [model] [effort]", handler: cmdModel},
-		{name: "permissions", desc: "Show or set permission mode", handler: cmdPermissions},
-		{name: "mode", desc: "List or select execution mode", handler: cmdMode},
-		{name: "config", desc: "Show current configuration", handler: cmdConfig},
+		{name: "model", group: "Config", desc: "Show or set model [model] [effort]", handler: cmdModel},
+		{name: "permissions", group: "Config", desc: "Show or set permission mode", handler: cmdPermissions},
+		{name: "mode", group: "Config", desc: "List or select execution mode", handler: cmdMode},
+		{name: "config", group: "Config", desc: "Show current configuration", handler: cmdConfig},
+		{name: "theme", group: "Config", desc: "Switch theme (dark/light)", handler: cmdTheme},
 
 		// Context
-		{name: "mention", desc: "Attach a file to next task", handler: cmdMention},
-		{name: "context", desc: "Show session context stats", handler: cmdContext},
-		{name: "diff", desc: "Show git diff summary", handler: cmdDiff},
+		{name: "mention", group: "Context", desc: "Attach a file to next task", handler: cmdMention},
+		{name: "context", group: "Context", desc: "Show session context stats", handler: cmdContext},
+		{name: "diff", group: "Context", desc: "Show git diff summary", handler: cmdDiff},
 
 		// Memory
-		{name: "memory", desc: "Search or clear session memory", handler: cmdMemory},
-		{name: "kg", desc: "Knowledge graph operations", handler: cmdKG},
+		{name: "memory", group: "Memory", desc: "Search or clear session memory", handler: cmdMemory},
+		{name: "kg", group: "Memory", desc: "Knowledge graph operations", handler: cmdKG},
 
 		// Execution
-		{name: "plan", desc: "Plan a task without executing", handler: cmdPlan},
-		{name: "review", desc: "Review current changes", handler: cmdReview},
-		{name: "trace", desc: "Show execution trace", handler: cmdTrace},
-		{name: "metrics", desc: "Show execution metrics", handler: cmdMetrics},
+		{name: "plan", group: "Execution", desc: "Plan a task without executing", handler: cmdPlan},
+		{name: "review", group: "Execution", desc: "Review current changes", handler: cmdReview},
+		{name: "trace", group: "Execution", desc: "Show execution trace", handler: cmdTrace},
+		{name: "metrics", group: "Execution", desc: "Show execution metrics", handler: cmdMetrics},
 
 		// System
-		{name: "status", desc: "Show system status", handler: cmdStatus},
-		{name: "history", desc: "Show task execution history", handler: cmdHistory},
-		{name: "doctor", desc: "Run system integrity check", handler: cmdDoctor},
-		{name: "snapshot", desc: "List snapshots", handler: cmdSnapshot},
-		{name: "plugin", desc: "List plugins", handler: cmdPlugin},
-		{name: "gc", desc: "Run garbage collection", handler: cmdGC},
+		{name: "status", group: "System", desc: "Show system status", handler: cmdStatus},
+		{name: "history", group: "System", desc: "Show task execution history", handler: cmdHistory},
+		{name: "doctor", group: "System", desc: "Run system integrity check", handler: cmdDoctor},
+		{name: "snapshot", group: "System", desc: "List snapshots", handler: cmdSnapshot},
+		{name: "plugin", group: "System", desc: "List plugins", handler: cmdPlugin},
+		{name: "gc", group: "System", desc: "Run garbage collection", handler: cmdGC},
 
 		// Utility
-		{name: "version", desc: "Show version", handler: cmdVersion},
-		{name: "quit", aliases: []string{"exit"}, desc: "Exit session", handler: cmdQuit},
+		{name: "version", group: "Utility", desc: "Show version", handler: cmdVersion},
+		{name: "quit", aliases: []string{"exit"}, group: "Utility", desc: "Exit session", handler: cmdQuit},
 	}
 }
 
@@ -131,11 +133,19 @@ func truncate(s string, n int) string {
 
 func cmdHelp(s *session, args string, rl *readline.Instance) bool {
 	fmt.Println()
+	lastGroup := ""
 	for _, c := range slashCommands {
-		fmt.Printf("  %-16s %s\n", stylePrompt.Render("/"+c.name), c.desc)
+		if c.group != lastGroup {
+			if lastGroup != "" {
+				fmt.Println()
+			}
+			fmt.Println(styleDim.Render("  " + c.group))
+			lastGroup = c.group
+		}
+		fmt.Printf("    %-16s %s\n", stylePrompt.Render("/"+c.name), c.desc)
 	}
 	fmt.Println()
-	fmt.Println(styleDim.Render("  Tip: Use !<cmd> to run a shell command"))
+	fmt.Println(styleDim.Render("  Tip: !<cmd> runs a shell command · Tab for autocomplete"))
 	fmt.Println()
 	return false
 }
@@ -272,6 +282,25 @@ func cmdConfig(s *session, args string, rl *readline.Instance) bool {
 	fmt.Printf("  Sandbox:     %s\n", s.cfg.Sandbox.Level)
 	fmt.Printf("  Pool:        %d workers\n", s.cfg.Pool.MaxConcurrent)
 	fmt.Printf("  Permissions: %s\n", s.cfg.Claude.PermissionMode)
+	fmt.Println()
+	return false
+}
+
+func cmdTheme(s *session, args string, rl *readline.Instance) bool {
+	name := strings.TrimSpace(args)
+	if name == "" {
+		fmt.Printf("  Current theme: %s\n", activeTheme.Name)
+		fmt.Println(styleDim.Render("  Available: dark, light"))
+		fmt.Println()
+		return false
+	}
+	if !SetTheme(name) {
+		fmt.Println(styleError.Render("  Unknown theme: " + name))
+		fmt.Println(styleDim.Render("  Available: dark, light"))
+		fmt.Println()
+		return false
+	}
+	fmt.Println(styleSuccess.Render("  Theme set to " + name))
 	fmt.Println()
 	return false
 }
