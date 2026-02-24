@@ -44,11 +44,12 @@ func showHistory(cmd *cobra.Command, args []string) error {
 
 	for _, e := range entries {
 		icon := "[OK]"
-		if e.Outcome == "failure" {
+		switch e.Outcome {
+		case "failure":
 			icon = "[FAIL]"
-		} else if e.Outcome == "timeout" {
+		case "timeout":
 			icon = "[TIMEOUT]"
-		} else if e.Outcome == "rejected" {
+		case "rejected":
 			icon = "[REJECTED]"
 		}
 		fmt.Printf("%s %s [%s] %s (%dms)\n", icon, e.Timestamp[:19], e.RiskLevel, e.Task, e.DurationMs)

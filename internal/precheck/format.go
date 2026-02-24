@@ -15,14 +15,14 @@ func FormatRunResult(result RunResult) string {
 		if !r.Passed {
 			tag = "[FAIL]"
 		}
-		b.WriteString(fmt.Sprintf("  %s %s: %s\n", tag, r.Name, r.Message))
+		fmt.Fprintf(&b, "  %s %s: %s\n", tag, r.Name, r.Message)
 	}
 	b.WriteString("\n")
 	verdict := "ALL PASSED"
 	if !result.AllPassed {
 		verdict = "SOME FAILED"
 	}
-	b.WriteString(fmt.Sprintf("Result: %s (%s)\n", verdict, result.Duration))
+	fmt.Fprintf(&b, "Result: %s (%s)\n", verdict, result.Duration)
 	return b.String()
 }
 

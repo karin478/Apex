@@ -220,9 +220,9 @@ func cmdExport(s *session, args string, rl *readline.Instance) bool {
 	var sb strings.Builder
 	sb.WriteString("# Apex Session Export\n\n")
 	for i, t := range s.turns {
-		sb.WriteString(fmt.Sprintf("## Turn %d\n\n", i+1))
-		sb.WriteString(fmt.Sprintf("**Task:** %s\n\n", t.task))
-		sb.WriteString(fmt.Sprintf("**Response:**\n\n%s\n\n", t.summary))
+		fmt.Fprintf(&sb, "## Turn %d\n\n", i+1)
+		fmt.Fprintf(&sb, "**Task:** %s\n\n", t.task)
+		fmt.Fprintf(&sb, "**Response:**\n\n%s\n\n", t.summary)
 	}
 	if err := os.WriteFile(path, []byte(sb.String()), 0644); err != nil {
 		fmt.Println(styleError.Render("  Export write error: " + err.Error()))

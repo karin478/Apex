@@ -142,8 +142,8 @@ func FormatPolicyChanges(changes []PolicyChange) string {
 
 	var sb strings.Builder
 	sb.WriteString("=== Policy Change History ===\n\n")
-	sb.WriteString(fmt.Sprintf("%-22s | %-30s | %-13s | %-13s\n",
-		"TIME", "FILE", "OLD", "NEW"))
+	fmt.Fprintf(&sb, "%-22s | %-30s | %-13s | %-13s\n",
+		"TIME", "FILE", "OLD", "NEW")
 	sb.WriteString(strings.Repeat("-", 82) + "\n")
 
 	for _, c := range changes {
@@ -153,11 +153,11 @@ func FormatPolicyChanges(changes []PolicyChange) string {
 		}
 		newDisplay := truncateChecksum(c.NewChecksum)
 
-		sb.WriteString(fmt.Sprintf("%-22s | %-30s | %-13s| %-13s\n",
+		fmt.Fprintf(&sb, "%-22s | %-30s | %-13s| %-13s\n",
 			c.Timestamp,
 			filepath.Base(c.File),
 			oldDisplay,
-			newDisplay))
+			newDisplay)
 	}
 
 	return sb.String()

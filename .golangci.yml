@@ -1,60 +1,81 @@
-linters-settings:
-  errcheck:
-    exclude-functions:
-      - fmt.Fprintf
-      - fmt.Fprintln
-      - fmt.Printf
-      - fmt.Println
-      - fmt.Scanln
-      - fmt.Sscanf
-      - (fmt.State).Write
-      - (*os/exec.Cmd).CombinedOutput
-      - path/filepath.Walk
-      - syscall.Flock
-      - (*database/sql.Rows).Scan
-    check-type-assertions: false
-    check-blank: false
-
+version: "2"
 linters:
-  enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-    # Best-effort audit logging — errors are non-fatal
-    - text: "Error return value of `logger.Log`"
-      linters:
-        - errcheck
-    - text: "Error return value of `audit.MaybeCreateAnchor`"
-      linters:
-        - errcheck
-    # Best-effort session persistence
-    - text: "SaveSession"
-      linters:
-        - errcheck
-    # Defer cleanup — nothing useful to do on error
-    - text: "Error return value of `lockMgr.Release`"
-      linters:
-        - errcheck
-    # Fire-and-forget startup registration
-    - text: "Error return value of `pool.AddReservation`"
-      linters:
-        - errcheck
-    - text: "Error return value of `reg.Register`"
-      linters:
-        - errcheck
-    # Best-effort staging operations during cleanup
-    - text: "Error return value of `stager."
-      linters:
-        - errcheck
-    # Best-effort git rollback
-    - text: "Error return value of `m.git`"
-      linters:
-        - errcheck
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Printf
+        - fmt.Println
+        - fmt.Scanln
+        - fmt.Sscanf
+        - (fmt.State).Write
+        - (*os/exec.Cmd).CombinedOutput
+        - path/filepath.Walk
+        - syscall.Flock
+        - (*database/sql.Rows).Scan
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+      - linters:
+          - errcheck
+        text: Error return value of `logger.Log`
+      - linters:
+          - errcheck
+        text: Error return value of `audit.MaybeCreateAnchor`
+      - linters:
+          - errcheck
+        text: SaveSession
+      - linters:
+          - errcheck
+        text: Error return value of `lockMgr.Release`
+      - linters:
+          - errcheck
+        text: Error return value of `pool.AddReservation`
+      - linters:
+          - errcheck
+        text: Error return value of `reg.Register`
+      - linters:
+          - errcheck
+        text: Error return value of `stager.
+      - linters:
+          - errcheck
+        text: Error return value of `m.git`
+      # ST1008: error return position — requires changing exported interfaces
+      - linters:
+          - staticcheck
+        text: "ST1008"
+      # QF1001: De Morgan's law — current form is more readable
+      - linters:
+          - staticcheck
+        text: "QF1001"
+      # QF1011: type omission in test — explicit type is intentional
+      - linters:
+          - staticcheck
+        path: _test\.go
+        text: "QF1011"
+      # QF1012: fmt.Fprintf vs WriteString(Sprintf) — style preference
+      - linters:
+          - staticcheck
+        text: "QF1012"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -31,7 +31,7 @@ func FormatReport(report Report) string {
 
 	b.WriteString(FormatSummary(report.Summary))
 
-	b.WriteString(fmt.Sprintf("\nDuration Stats:\n"+
+	fmt.Fprintf(&b, "\nDuration Stats:\n"+
 		"  Runs:    %d\n"+
 		"  Min:     %.1fs\n"+
 		"  Max:     %.1fs\n"+
@@ -44,17 +44,17 @@ func FormatReport(report Report) string {
 		report.Duration.AvgSecs,
 		report.Duration.P50Secs,
 		report.Duration.P90Secs,
-	))
+	)
 
 	if len(report.Failures) > 0 {
 		b.WriteString("\nFailure Patterns:\n")
 		b.WriteString("  STATUS    COUNT  RATE\n")
 		for _, f := range report.Failures {
-			b.WriteString(fmt.Sprintf("  %-9s %5d  %.1f%%\n", f.Status, f.Count, f.Rate*100))
+			fmt.Fprintf(&b, "  %-9s %5d  %.1f%%\n", f.Status, f.Count, f.Rate*100)
 		}
 	}
 
-	b.WriteString(fmt.Sprintf("\nGenerated: %s\n", report.Generated))
+	fmt.Fprintf(&b, "\nGenerated: %s\n", report.Generated)
 
 	return b.String()
 }

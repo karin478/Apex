@@ -425,11 +425,12 @@ func runTask(cmd *cobra.Command, args []string) error {
 	if ob != nil {
 		for _, n := range d.Nodes {
 			actionID := nodeActionIDs[n.ID]
-			if n.Status == dag.Failed {
+			switch n.Status {
+			case dag.Failed:
 				if failErr := ob.Fail(actionID, n.Error); failErr != nil {
 					fmt.Fprintf(os.Stderr, "warning: outbox fail failed for %s: %v\n", n.ID, failErr)
 				}
-			} else if n.Status == dag.Completed {
+			case dag.Completed:
 				if completeErr := ob.Complete(actionID, ""); completeErr != nil {
 					fmt.Fprintf(os.Stderr, "warning: outbox complete failed for %s: %v\n", n.ID, completeErr)
 				}
