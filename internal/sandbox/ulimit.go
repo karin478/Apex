@@ -3,6 +3,7 @@ package sandbox
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 )
 
@@ -36,8 +37,14 @@ func (u *UlimitSandbox) Wrap(_ context.Context, binary string, args []string) (s
 		quoted[i] = shellQuote(a)
 	}
 
-	cmd := fmt.Sprintf("set -e; ulimit -t %d -f %d && exec %s %s",
-		cpu, fileBlocks, shellQuote(binary), strings.Join(quoted, " "))
+	// ulimit -v (virtual memory) is not supported on macOS
+	limits := fmt.Sprintf("-t %d -f %d", cpu, fileBlocks)
+	if runtime.GOOS == "linux" {
+		limits = fmt.Sprintf("-v %d %s", mem, limits)
+	}
+
+	cmd := fmt.Sprintf("set -e; ulimit %s && exec %s %s",
+		limits, shellQuote(binary), strings.Join(quoted, " "))
 
 	return "sh", []string{"-c", cmd}, nil
 }

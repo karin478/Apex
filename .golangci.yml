@@ -1,0 +1,60 @@
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - fmt.Fprintf
+      - fmt.Fprintln
+      - fmt.Printf
+      - fmt.Println
+      - fmt.Scanln
+      - fmt.Sscanf
+      - (fmt.State).Write
+      - (*os/exec.Cmd).CombinedOutput
+      - path/filepath.Walk
+      - syscall.Flock
+      - (*database/sql.Rows).Scan
+    check-type-assertions: false
+    check-blank: false
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+    # Best-effort audit logging — errors are non-fatal
+    - text: "Error return value of `logger.Log`"
+      linters:
+        - errcheck
+    - text: "Error return value of `audit.MaybeCreateAnchor`"
+      linters:
+        - errcheck
+    # Best-effort session persistence
+    - text: "SaveSession"
+      linters:
+        - errcheck
+    # Defer cleanup — nothing useful to do on error
+    - text: "Error return value of `lockMgr.Release`"
+      linters:
+        - errcheck
+    # Fire-and-forget startup registration
+    - text: "Error return value of `pool.AddReservation`"
+      linters:
+        - errcheck
+    - text: "Error return value of `reg.Register`"
+      linters:
+        - errcheck
+    # Best-effort staging operations during cleanup
+    - text: "Error return value of `stager."
+      linters:
+        - errcheck
+    # Best-effort git rollback
+    - text: "Error return value of `m.git`"
+      linters:
+        - errcheck

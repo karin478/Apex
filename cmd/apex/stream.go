@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -16,22 +15,6 @@ import (
 	"github.com/lyndonlyu/apex/internal/pool"
 	"github.com/lyndonlyu/apex/internal/sandbox"
 )
-
-// stripJSONEnvelope extracts the result text from a Claude CLI JSON envelope.
-// If the line is not a JSON envelope, it is returned as-is.
-func stripJSONEnvelope(line string) string {
-	var env struct {
-		Result  string `json:"result"`
-		IsError bool   `json:"is_error"`
-	}
-	if err := json.Unmarshal([]byte(line), &env); err != nil {
-		return line
-	}
-	if env.Result == "" {
-		return line
-	}
-	return env.Result
-}
 
 // renderMarkdown renders markdown text for terminal display.
 func renderMarkdown(text string) string {
