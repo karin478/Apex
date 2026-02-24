@@ -1,8 +1,21 @@
-# Apex
+<p align="center">
+  <img src="assets/logo.svg" alt="Apex Logo" width="180">
+</p>
 
-**A production-grade AI agent orchestrator for Claude Code.**
+<h1 align="center">Apex</h1>
 
-Apex decomposes complex tasks into directed acyclic graphs (DAGs), executes them concurrently through Claude Code CLI, and wraps every action in a governance, audit, and safety framework designed for autonomous operation.
+<p align="center">
+  <strong>A production-grade AI agent orchestrator for Claude Code.</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/karin478/Apex/actions"><img src="https://github.com/karin478/Apex/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/karin478/Apex/blob/main/LICENSE"><img src="https://img.shields.io/github/license/karin478/Apex" alt="License"></a>
+  <a href="https://golang.org"><img src="https://img.shields.io/badge/Go-1.25-00ADD8?logo=go" alt="Go 1.25"></a>
+  <a href="https://github.com/karin478/Apex"><img src="https://img.shields.io/github/stars/karin478/Apex?style=social" alt="Stars"></a>
+</p>
+
+Apex is a **CLI-based AI agent orchestrator** that decomposes complex tasks into **directed acyclic graphs (DAGs)**, executes them concurrently through **Claude Code CLI**, and wraps every action in a governance, audit, and safety framework designed for **autonomous AI operation**. Built in Go with 57 internal packages — no external runtime dependencies.
 
 ```
 apex run "refactor the auth module, then update all tests, and finally update the docs"
@@ -439,4 +452,8 @@ MIT
 
 ## Author
 
-**Lyndon Lyu** — [github.com/lyndonlyu](https://github.com/lyndonlyu)
+**Lyndon Lyu** — [@karin478](https://github.com/karin478)
+
+---
+
+<sub>**Keywords:** AI agent, Claude Code, CLI orchestrator, DAG execution, task automation, Go CLI tool, risk governance, audit trail, autonomous AI, LLM orchestration, Claude API, AI safety, code automation</sub>
