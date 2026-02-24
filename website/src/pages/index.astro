@@ -1,0 +1,510 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout
+  title="Apex — Production-Grade AI Agent Orchestrator"
+  description="A CLI-based DAG orchestrator for Claude Code. Decompose complex tasks, execute concurrently, with built-in governance, audit trails, and safety controls."
+>
+
+<!-- Navigation -->
+<nav class="fixed top-0 w-full z-50 border-b border-white/5 backdrop-blur-xl bg-[#020617]/80">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="#" class="flex items-center gap-3">
+      <img src="/logo.svg" alt="Apex" class="w-8 h-8" />
+      <span class="text-lg font-bold text-white">Apex</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8 text-sm text-slate-400">
+      <a href="#features" class="hover:text-white transition-colors">Features</a>
+      <a href="#demo" class="hover:text-white transition-colors">Demo</a>
+      <a href="#architecture" class="hover:text-white transition-colors">Architecture</a>
+      <a href="#quickstart" class="hover:text-white transition-colors">Quick Start</a>
+      <a href="https://github.com/karin478/Apex" target="_blank" rel="noopener"
+         class="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white transition-all">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        Star
+      </a>
+    </div>
+    <!-- Mobile menu button -->
+    <button id="mobile-menu-btn" class="md:hidden text-slate-400 hover:text-white">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+  <!-- Mobile menu -->
+  <div id="mobile-menu" class="hidden md:hidden border-t border-white/5 bg-[#020617]/95 backdrop-blur-xl">
+    <div class="px-6 py-4 flex flex-col gap-3 text-sm text-slate-400">
+      <a href="#features" class="hover:text-white transition-colors py-2">Features</a>
+      <a href="#demo" class="hover:text-white transition-colors py-2">Demo</a>
+      <a href="#architecture" class="hover:text-white transition-colors py-2">Architecture</a>
+      <a href="#quickstart" class="hover:text-white transition-colors py-2">Quick Start</a>
+      <a href="https://github.com/karin478/Apex" target="_blank" rel="noopener" class="hover:text-white transition-colors py-2">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="relative min-h-screen flex items-center justify-center pt-16 grid-pattern overflow-hidden">
+  <!-- Background gradient blobs -->
+  <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px] pointer-events-none"></div>
+  <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[128px] pointer-events-none"></div>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
+    <!-- Logo -->
+    <div class="animate-fade-in animate-float mb-8">
+      <img src="/logo.svg" alt="Apex Logo" class="w-28 h-28 mx-auto drop-shadow-2xl" />
+    </div>
+
+    <!-- Title -->
+    <h1 class="animate-fade-in animate-delay-1 text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
+      <span class="gradient-text">Apex</span>
+    </h1>
+
+    <!-- Subtitle -->
+    <p class="animate-fade-in animate-delay-2 text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-4 leading-relaxed">
+      Production-Grade AI Agent Orchestrator
+    </p>
+    <p class="animate-fade-in animate-delay-2 text-base md:text-lg text-slate-500 max-w-xl mx-auto mb-10">
+      Decompose complex tasks into DAGs. Execute concurrently.
+      <br class="hidden md:block" />
+      With built-in governance, audit trails, and safety controls.
+    </p>
+
+    <!-- CTA Buttons -->
+    <div class="animate-fade-in animate-delay-3 flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+      <a href="https://github.com/karin478/Apex" target="_blank" rel="noopener"
+         class="group flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        Star on GitHub
+        <svg class="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#quickstart"
+         class="flex items-center gap-2 px-8 py-3.5 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-white/5 hover:border-slate-500 transition-all">
+        Get Started
+      </a>
+    </div>
+
+    <!-- Install command -->
+    <div class="animate-fade-in animate-delay-4 inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-slate-900/80 border border-slate-800 font-mono text-sm">
+      <span class="text-slate-500">$</span>
+      <span class="text-cyan-400">go install</span>
+      <span class="text-slate-300">github.com/karin478/apex/cmd/apex@latest</span>
+      <button onclick="navigator.clipboard.writeText('go install github.com/karin478/apex/cmd/apex@latest')"
+              class="text-slate-600 hover:text-slate-300 transition-colors" title="Copy">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      </button>
+    </div>
+
+    <!-- Badges -->
+    <div class="animate-fade-in animate-delay-4 flex items-center justify-center gap-3 mt-6 flex-wrap">
+      <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go 1.25" />
+      <img src="https://img.shields.io/github/license/karin478/Apex?style=flat-square&color=7C3AED" alt="License" />
+      <img src="https://img.shields.io/github/actions/workflow/status/karin478/Apex/ci.yml?style=flat-square&label=CI" alt="CI" />
+      <img src="https://img.shields.io/github/stars/karin478/Apex?style=flat-square&color=06B6D4" alt="Stars" />
+    </div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-slate-600">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+  </div>
+</section>
+
+<!-- Why Apex — 3 Pillars -->
+<section class="py-24 px-6 relative">
+  <div class="absolute inset-0 bg-gradient-to-b from-transparent via-purple-950/5 to-transparent pointer-events-none"></div>
+  <div class="max-w-6xl mx-auto relative">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Why Apex?</h2>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+        AI agents need more than prompt-wrapping. They need production-grade orchestration.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <!-- Pillar 1: DAG Orchestration -->
+      <div class="gradient-border p-8 rounded-2xl">
+        <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-5">
+          <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">DAG Orchestration</h3>
+        <p class="text-slate-400 leading-relaxed">
+          Natural language in, dependency graph out. Apex decomposes complex tasks into DAGs and executes independent nodes concurrently with configurable worker pools.
+        </p>
+      </div>
+
+      <!-- Pillar 2: Safety & Governance -->
+      <div class="gradient-border p-8 rounded-2xl">
+        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-5">
+          <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">Safety & Governance</h3>
+        <p class="text-slate-400 leading-relaxed">
+          Risk classification, approval workflows, emergency kill switch, sandbox isolation, and snapshot rollback. Every action is governed by configurable policies.
+        </p>
+      </div>
+
+      <!-- Pillar 3: Audit Trail -->
+      <div class="gradient-border p-8 rounded-2xl">
+        <div class="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-5">
+          <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-white mb-3">Cryptographic Audit</h3>
+        <p class="text-slate-400 leading-relaxed">
+          SHA-256 hash-chained append-only logs, daily anchors, causal tracing, and tamper-evident records. Full accountability for every AI action.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Terminal Demo -->
+<section id="demo" class="py-24 px-6 relative">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">See It In Action</h2>
+      <p class="text-slate-400 text-lg">Interactive REPL with 28 slash commands and real-time DAG execution</p>
+    </div>
+
+    <div class="terminal glow-purple animate-pulse-glow">
+      <div class="terminal-header">
+        <div class="terminal-dot bg-red-500"></div>
+        <div class="terminal-dot bg-yellow-500"></div>
+        <div class="terminal-dot bg-green-500"></div>
+        <span class="ml-3 text-sm text-slate-500 font-mono">apex — interactive</span>
+      </div>
+      <div class="p-1 max-h-[500px] overflow-auto">
+        <img src="/demo.svg" alt="Apex Interactive Demo" class="w-full" loading="lazy" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Feature Grid -->
+<section id="features" class="py-24 px-6 relative">
+  <div class="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-950/5 to-transparent pointer-events-none"></div>
+  <div class="max-w-6xl mx-auto relative">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Built for Production</h2>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto">
+        57 internal packages covering every aspect of autonomous AI agent operations
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Feature 1 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-purple-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x26A1;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Concurrent Execution</h3>
+        <p class="text-sm text-slate-500">1-64 worker pool with retry and exponential backoff</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-cyan-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F6E1;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Sandbox Isolation</h3>
+        <p class="text-sm text-slate-500">Ulimit or Docker container with configurable resource limits</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-indigo-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F4CA;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Cost Estimation</h3>
+        <p class="text-sm text-slate-500">Dry-run mode shows token count and cost before execution</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-violet-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F9E0;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Knowledge Graph</h3>
+        <p class="text-sm text-slate-500">Entity-relationship DB with vector similarity search</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-purple-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F504;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Auto Rollback</h3>
+        <p class="text-sm text-slate-500">Git stash snapshots with automatic restore on failure</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-cyan-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F6D1;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Kill Switch</h3>
+        <p class="text-sm text-slate-500">Emergency halt file stops all running and future executions</p>
+      </div>
+
+      <!-- Feature 7 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-indigo-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F4BE;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Crash-Safe State</h3>
+        <p class="text-sm text-slate-500">SQLite WAL + outbox pattern with crash reconciliation</p>
+      </div>
+
+      <!-- Feature 8 -->
+      <div class="group p-6 rounded-xl bg-slate-900/50 border border-slate-800/50 hover:border-violet-500/30 hover:bg-slate-900/80 transition-all">
+        <div class="text-2xl mb-3">&#x1F50D;</div>
+        <h3 class="text-base font-semibold text-white mb-2">Health Monitor</h3>
+        <p class="text-sm text-slate-500">GREEN to CRITICAL health levels with Prometheus metrics</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Architecture -->
+<section id="architecture" class="py-24 px-6 relative">
+  <div class="max-w-5xl mx-auto">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Architecture</h2>
+      <p class="text-slate-400 text-lg">Zero external dependencies. Filesystem-first design. Pure Go.</p>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div class="relative p-8 md:p-12 rounded-2xl bg-slate-900/50 border border-slate-800/50 overflow-hidden">
+      <!-- Background grid -->
+      <div class="absolute inset-0 grid-pattern opacity-50"></div>
+
+      <div class="relative space-y-8">
+        <!-- Row 1: Input -->
+        <div class="flex justify-center">
+          <div class="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border border-purple-500/30 text-center">
+            <div class="text-xs text-purple-400 uppercase tracking-wider mb-1">Input</div>
+            <div class="text-white font-semibold font-mono text-sm">"refactor auth, update tests, update docs"</div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="flex justify-center text-slate-600">
+          <svg class="w-6 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 32"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v24m0 0l-6-6m6 6l6-6"/></svg>
+        </div>
+
+        <!-- Row 2: Planner -->
+        <div class="flex justify-center">
+          <div class="px-8 py-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <div class="text-xs text-purple-400 uppercase tracking-wider mb-1">NLP Planner</div>
+            <div class="text-white font-medium">Task Decomposition &amp; Dependency Analysis</div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="flex justify-center text-slate-600">
+          <svg class="w-6 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 32"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v24m0 0l-6-6m6 6l6-6"/></svg>
+        </div>
+
+        <!-- Row 3: DAG + Safety Layer -->
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-center">
+            <div class="text-xs text-cyan-400 uppercase tracking-wider mb-1">Governance</div>
+            <div class="text-sm text-slate-300">Risk Classification</div>
+            <div class="text-sm text-slate-300">Approval Policies</div>
+          </div>
+          <div class="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
+            <div class="text-xs text-indigo-400 uppercase tracking-wider mb-2">DAG Engine</div>
+            <!-- Mini DAG visualization -->
+            <svg class="w-full h-20" viewBox="0 0 200 80">
+              <circle cx="100" cy="10" r="8" fill="#8B5CF6"/>
+              <circle cx="60" cy="45" r="8" fill="#06B6D4"/>
+              <circle cx="140" cy="45" r="8" fill="#06B6D4"/>
+              <circle cx="40" cy="75" r="6" fill="#06B6D4" opacity="0.6"/>
+              <circle cx="80" cy="75" r="6" fill="#06B6D4" opacity="0.6"/>
+              <circle cx="120" cy="75" r="6" fill="#06B6D4" opacity="0.6"/>
+              <circle cx="160" cy="75" r="6" fill="#06B6D4" opacity="0.6"/>
+              <line x1="100" y1="18" x2="60" y2="37" stroke="#8B5CF6" stroke-width="1.5" opacity="0.6"/>
+              <line x1="100" y1="18" x2="140" y2="37" stroke="#8B5CF6" stroke-width="1.5" opacity="0.6"/>
+              <line x1="60" y1="53" x2="40" y2="69" stroke="#06B6D4" stroke-width="1" opacity="0.4"/>
+              <line x1="60" y1="53" x2="80" y2="69" stroke="#06B6D4" stroke-width="1" opacity="0.4"/>
+              <line x1="140" y1="53" x2="120" y2="69" stroke="#06B6D4" stroke-width="1" opacity="0.4"/>
+              <line x1="140" y1="53" x2="160" y2="69" stroke="#06B6D4" stroke-width="1" opacity="0.4"/>
+            </svg>
+          </div>
+          <div class="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-center">
+            <div class="text-xs text-violet-400 uppercase tracking-wider mb-1">Safety</div>
+            <div class="text-sm text-slate-300">Sandbox Isolation</div>
+            <div class="text-sm text-slate-300">Snapshot Rollback</div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="flex justify-center text-slate-600">
+          <svg class="w-6 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 32"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v24m0 0l-6-6m6 6l6-6"/></svg>
+        </div>
+
+        <!-- Row 4: Executor -->
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700/50 text-center">
+            <div class="text-xs text-green-400 uppercase tracking-wider mb-1">Executor</div>
+            <div class="text-sm text-slate-300">Concurrent Worker Pool (1-64)</div>
+            <div class="text-sm text-slate-300">Retry + Exponential Backoff</div>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-800/80 border border-slate-700/50 text-center">
+            <div class="text-xs text-amber-400 uppercase tracking-wider mb-1">Audit Engine</div>
+            <div class="text-sm text-slate-300">Hash-Chained JSONL Logs</div>
+            <div class="text-sm text-slate-300">Daily Anchors + Causal Tracing</div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="flex justify-center text-slate-600">
+          <svg class="w-6 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 32"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v24m0 0l-6-6m6 6l6-6"/></svg>
+        </div>
+
+        <!-- Row 5: Storage -->
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="p-3 rounded-lg bg-slate-800/50 border border-slate-700/30 text-center">
+            <div class="text-xs text-slate-500 uppercase tracking-wider">SQLite WAL</div>
+            <div class="text-xs text-slate-400">Crash-Safe State</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-800/50 border border-slate-700/30 text-center">
+            <div class="text-xs text-slate-500 uppercase tracking-wider">Knowledge Graph</div>
+            <div class="text-xs text-slate-400">Vector Search + Memory</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-800/50 border border-slate-700/30 text-center">
+            <div class="text-xs text-slate-500 uppercase tracking-wider">Artifacts</div>
+            <div class="text-xs text-slate-400">Content-Addressed Storage</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Quick Start -->
+<section id="quickstart" class="py-24 px-6 relative">
+  <div class="absolute inset-0 bg-gradient-to-b from-transparent via-purple-950/5 to-transparent pointer-events-none"></div>
+  <div class="max-w-3xl mx-auto relative">
+    <div class="text-center mb-16">
+      <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Quick Start</h2>
+      <p class="text-slate-400 text-lg">Up and running in 3 steps</p>
+    </div>
+
+    <div class="space-y-6">
+      <!-- Step 1 -->
+      <div class="flex gap-5">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 font-bold text-sm">1</div>
+        <div class="flex-1 pt-1">
+          <h3 class="text-white font-semibold mb-3">Install</h3>
+          <div class="code-block">
+            <span class="text-slate-500">$</span> <span class="text-cyan-400">go install</span> <span class="text-slate-300">github.com/karin478/apex/cmd/apex@latest</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="flex gap-5">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-sm">2</div>
+        <div class="flex-1 pt-1">
+          <h3 class="text-white font-semibold mb-3">Initialize</h3>
+          <div class="code-block">
+            <span class="text-slate-500">$</span> <span class="text-cyan-400">apex init</span><br/>
+            <span class="text-green-400">&#x2713;</span> <span class="text-slate-400">Created .apex/config.yaml</span><br/>
+            <span class="text-green-400">&#x2713;</span> <span class="text-slate-400">Created .apex/policies/default.yaml</span><br/>
+            <span class="text-green-400">&#x2713;</span> <span class="text-slate-400">Initialized state database</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="flex gap-5">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-sm">3</div>
+        <div class="flex-1 pt-1">
+          <h3 class="text-white font-semibold mb-3">Run</h3>
+          <div class="code-block">
+            <span class="text-slate-500">$</span> <span class="text-cyan-400">apex run</span> <span class="text-amber-300">"refactor the auth module, then update all tests"</span><br/><br/>
+            <span class="text-purple-400">&#x25B6;</span> <span class="text-slate-400">Planning...</span> <span class="text-green-400">3 nodes, 2 dependencies</span><br/>
+            <span class="text-cyan-400">&#x25B6;</span> <span class="text-slate-400">Executing DAG with</span> <span class="text-white">4 workers</span><br/>
+            <span class="text-slate-500">  ├─</span> <span class="text-green-400">&#x2713;</span> <span class="text-slate-300">refactor-auth</span> <span class="text-slate-600">(12.3s)</span><br/>
+            <span class="text-slate-500">  ├─</span> <span class="text-green-400">&#x2713;</span> <span class="text-slate-300">update-unit-tests</span> <span class="text-slate-600">(8.1s)</span><br/>
+            <span class="text-slate-500">  └─</span> <span class="text-green-400">&#x2713;</span> <span class="text-slate-300">update-integration-tests</span> <span class="text-slate-600">(15.7s)</span><br/><br/>
+            <span class="text-green-400">&#x2714; All 3 nodes completed successfully</span> <span class="text-slate-600">(36.1s total)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats / Numbers -->
+<section class="py-16 px-6 border-t border-b border-slate-800/50">
+  <div class="max-w-5xl mx-auto">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <div>
+        <div class="text-3xl md:text-4xl font-bold gradient-text">57</div>
+        <div class="text-sm text-slate-500 mt-1">Internal Packages</div>
+      </div>
+      <div>
+        <div class="text-3xl md:text-4xl font-bold gradient-text">698</div>
+        <div class="text-sm text-slate-500 mt-1">Test Functions</div>
+      </div>
+      <div>
+        <div class="text-3xl md:text-4xl font-bold gradient-text">28</div>
+        <div class="text-sm text-slate-500 mt-1">Slash Commands</div>
+      </div>
+      <div>
+        <div class="text-3xl md:text-4xl font-bold gradient-text">0</div>
+        <div class="text-sm text-slate-500 mt-1">External Dependencies*</div>
+      </div>
+    </div>
+    <p class="text-center text-xs text-slate-600 mt-4">* No external runtime dependencies — filesystem-first architecture</p>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-24 px-6 relative">
+  <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-purple-600/10 rounded-full blur-[128px] pointer-events-none"></div>
+  <div class="max-w-2xl mx-auto text-center relative">
+    <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">Ready to orchestrate?</h2>
+    <p class="text-slate-400 text-lg mb-10">
+      Give your AI agents the production-grade infrastructure they deserve.
+    </p>
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+      <a href="https://github.com/karin478/Apex" target="_blank" rel="noopener"
+         class="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/25">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#quickstart"
+         class="flex items-center gap-2 px-8 py-3.5 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-white/5 hover:border-slate-500 transition-all">
+        Quick Start Guide
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-8 px-6 border-t border-slate-800/50">
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-600">
+    <div class="flex items-center gap-2">
+      <img src="/logo.svg" alt="Apex" class="w-5 h-5" />
+      <span>Apex &mdash; Production-Grade AI Agent Orchestrator</span>
+    </div>
+    <div class="flex items-center gap-6">
+      <a href="https://github.com/karin478/Apex" target="_blank" rel="noopener" class="hover:text-slate-400 transition-colors">GitHub</a>
+      <a href="https://github.com/karin478/Apex/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-slate-400 transition-colors">MIT License</a>
+      <span>Built by <a href="https://github.com/karin478" target="_blank" rel="noopener" class="text-purple-500 hover:text-purple-400 transition-colors">@karin478</a></span>
+    </div>
+  </div>
+</footer>
+
+<!-- Mobile menu script -->
+<script>
+  const btn = document.getElementById('mobile-menu-btn');
+  const menu = document.getElementById('mobile-menu');
+  btn?.addEventListener('click', () => {
+    menu?.classList.toggle('hidden');
+  });
+  // Close menu on link click
+  menu?.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      menu?.classList.add('hidden');
+    });
+  });
+</script>
+
+</Layout>
