@@ -40,7 +40,16 @@ jobs:
         run: go vet ./...
 
       - name: Test
-        run: go test -v -race -count=1 -timeout 300s ./internal/... ./cmd/...
+        run: |
+          go test -v -race -count=1 -timeout 300s ./internal/... ./cmd/... 2>&1 | tee test-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload test output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.txt
 
   lint:
     runs-on: ubuntu-latest
