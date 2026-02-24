@@ -160,23 +160,47 @@ func TestCmdMention(t *testing.T) {
 
 func TestCmdModel(t *testing.T) {
 	cfg := &config.Config{}
-	cfg.Claude.Model = "old-model"
+	cfg.Claude.Model = "claude-opus-4-6"
 	cfg.Claude.Effort = "high"
 	s := &session{cfg: cfg}
 
-	// Switch model only
-	cmdModel(s, "new-model", nil)
-	if s.cfg.Claude.Model != "new-model" {
-		t.Error("model not switched")
+	// Switch model by alias
+	cmdModel(s, "sonnet", nil)
+	if s.cfg.Claude.Model != "claude-sonnet-4-5" {
+		t.Errorf("model not switched to sonnet, got %s", s.cfg.Claude.Model)
 	}
 	if s.cfg.Claude.Effort != "high" {
 		t.Error("effort should remain unchanged")
 	}
 
-	// Switch model + effort
-	cmdModel(s, "another-model low", nil)
-	if s.cfg.Claude.Model != "another-model" || s.cfg.Claude.Effort != "low" {
-		t.Error("model+effort not switched")
+	// Switch model by alias + effort
+	cmdModel(s, "haiku low", nil)
+	if s.cfg.Claude.Model != "claude-haiku-4-5" || s.cfg.Claude.Effort != "low" {
+		t.Errorf("model+effort not switched, got %s %s", s.cfg.Claude.Model, s.cfg.Claude.Effort)
+	}
+
+	// Switch model by number
+	cmdModel(s, "1", nil)
+	if s.cfg.Claude.Model != "claude-opus-4-6" {
+		t.Errorf("model not switched by number, got %s", s.cfg.Claude.Model)
+	}
+
+	// Switch model by full id
+	cmdModel(s, "claude-sonnet-4-5", nil)
+	if s.cfg.Claude.Model != "claude-sonnet-4-5" {
+		t.Errorf("model not switched by full id, got %s", s.cfg.Claude.Model)
+	}
+
+	// Unknown model should not change current
+	cmdModel(s, "unknown-model", nil)
+	if s.cfg.Claude.Model != "claude-sonnet-4-5" {
+		t.Error("unknown model should not change current model")
+	}
+
+	// Effort subcommand
+	cmdModel(s, "effort medium", nil)
+	if s.cfg.Claude.Effort != "medium" {
+		t.Errorf("effort not set, got %s", s.cfg.Claude.Effort)
 	}
 }
 

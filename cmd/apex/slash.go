@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/chzyer/readline"
+	"github.com/lyndonlyu/apex/internal/health"
 	"github.com/spf13/cobra"
 )
 
@@ -237,31 +239,181 @@ func cmdClear(s *session, args string, rl *readline.Instance) bool {
 	return false
 }
 
+// claudeModel defines an available Claude model with metadata.
+type claudeModel struct {
+	id    string // full model ID, e.g. "claude-opus-4-6"
+	alias string // short alias, e.g. "opus"
+	desc  string // one-line description
+}
+
+// availableModels is the built-in list of Claude models supported by the CLI.
+var availableModels = []claudeModel{
+	{id: "claude-opus-4-6", alias: "opus", desc: "Most capable, best for complex tasks"},
+	{id: "claude-sonnet-4-5", alias: "sonnet", desc: "Balanced speed and capability"},
+	{id: "claude-haiku-4-5", alias: "haiku", desc: "Fastest, best for simple tasks"},
+}
+
+// validEfforts lists the valid effort levels.
+var validEfforts = []string{"low", "medium", "high"}
+
+// findModelByQuery matches a model by alias, id, or number (1-based).
+func findModelByQuery(query string) *claudeModel {
+	q := strings.ToLower(strings.TrimSpace(query))
+	// Try number (1-based)
+	if n, err := fmt.Sscanf(q, "%d", new(int)); n == 1 && err == nil {
+		var idx int
+		fmt.Sscanf(q, "%d", &idx)
+		if idx >= 1 && idx <= len(availableModels) {
+			return &availableModels[idx-1]
+		}
+	}
+	// Try alias or id match
+	for i := range availableModels {
+		if q == availableModels[i].alias || q == availableModels[i].id {
+			return &availableModels[i]
+		}
+	}
+	// Try substring match
+	for i := range availableModels {
+		if strings.Contains(availableModels[i].id, q) || strings.Contains(availableModels[i].alias, q) {
+			return &availableModels[i]
+		}
+	}
+	return nil
+}
+
 func cmdModel(s *session, args string, rl *readline.Instance) bool {
 	if args == "" {
-		fmt.Printf("  Model:  %s\n", s.cfg.Claude.Model)
-		fmt.Printf("  Effort: %s\n", s.cfg.Claude.Effort)
+		// Show current model + available models
+		fmt.Println()
+		fmt.Printf("  %s %s %s\n",
+			styleBannerTitle.Render("Model:"),
+			s.cfg.Claude.Model,
+			styleDim.Render(fmt.Sprintf("(effort: %s)", s.cfg.Claude.Effort)))
+		fmt.Println()
+
+		for i, m := range availableModels {
+			num := fmt.Sprintf("%d", i+1)
+			if m.id == s.cfg.Claude.Model || m.alias == s.cfg.Claude.Model {
+				fmt.Printf("  %s %s  %-8s  %s\n",
+					styleSuccess.Render("●"),
+					stylePrompt.Render(num+"."),
+					m.alias,
+					styleDim.Render(m.desc))
+			} else {
+				fmt.Printf("    %s  %-8s  %s\n",
+					styleDim.Render(num+"."),
+					m.alias,
+					styleDim.Render(m.desc))
+			}
+		}
+
+		fmt.Println()
+		fmt.Println(styleDim.Render("  /model <name|number> [effort]"))
+		fmt.Println(styleDim.Render("  /model effort <low|medium|high>"))
 		fmt.Println()
 		return false
 	}
+
 	parts := strings.Fields(args)
-	s.cfg.Claude.Model = parts[0]
-	if len(parts) > 1 {
-		s.cfg.Claude.Effort = parts[1]
+
+	// Handle "/model effort <level>"
+	if parts[0] == "effort" {
+		if len(parts) < 2 {
+			fmt.Println(styleInfo.Render(fmt.Sprintf("  Current effort: %s", s.cfg.Claude.Effort)))
+			fmt.Println(styleDim.Render(fmt.Sprintf("  Available: %s", strings.Join(validEfforts, ", "))))
+			fmt.Println()
+			return false
+		}
+		level := strings.ToLower(parts[1])
+		valid := false
+		for _, e := range validEfforts {
+			if e == level {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			fmt.Println(styleError.Render(fmt.Sprintf("  Unknown effort level: %s", parts[1])))
+			fmt.Println(styleDim.Render(fmt.Sprintf("  Available: %s", strings.Join(validEfforts, ", "))))
+			fmt.Println()
+			return false
+		}
+		s.cfg.Claude.Effort = level
+		fmt.Println(styleSuccess.Render(fmt.Sprintf("  Effort set to %s", level)))
+		fmt.Println()
+		return false
 	}
-	fmt.Println(styleSuccess.Render(fmt.Sprintf("  Model set to %s (effort: %s)", s.cfg.Claude.Model, s.cfg.Claude.Effort)))
+
+	// Find model by query
+	m := findModelByQuery(parts[0])
+	if m == nil {
+		fmt.Println(styleError.Render(fmt.Sprintf("  Unknown model: %s", parts[0])))
+		fmt.Println(styleDim.Render("  Available: opus, sonnet, haiku"))
+		fmt.Println()
+		return false
+	}
+
+	s.cfg.Claude.Model = m.id
+	if len(parts) > 1 {
+		level := strings.ToLower(parts[1])
+		valid := false
+		for _, e := range validEfforts {
+			if e == level {
+				valid = true
+				break
+			}
+		}
+		if valid {
+			s.cfg.Claude.Effort = level
+		}
+	}
+
+	fmt.Println(styleSuccess.Render(fmt.Sprintf("  Model: %s (%s, effort: %s)", m.id, m.alias, s.cfg.Claude.Effort)))
 	fmt.Println()
 	return false
 }
 
+// validPermissionModes lists the permission modes supported by Claude CLI.
+var validPermissionModes = []string{"default", "acceptEdits", "bypassPermissions", "plan"}
+
 func cmdPermissions(s *session, args string, rl *readline.Instance) bool {
 	if args == "" {
-		fmt.Printf("  Permission mode: %s\n", s.cfg.Claude.PermissionMode)
+		perm := s.cfg.Claude.PermissionMode
+		if perm == "" {
+			perm = "default"
+		}
+		fmt.Println()
+		fmt.Printf("  %s %s\n", styleBannerTitle.Render("Permission mode:"), perm)
+		fmt.Println()
+		for _, m := range validPermissionModes {
+			if m == perm {
+				fmt.Printf("  %s %s\n", styleSuccess.Render("●"), m)
+			} else {
+				fmt.Printf("    %s\n", styleDim.Render(m))
+			}
+		}
+		fmt.Println()
+		fmt.Println(styleDim.Render("  /permissions <mode>"))
 		fmt.Println()
 		return false
 	}
-	s.cfg.Claude.PermissionMode = strings.TrimSpace(args)
-	fmt.Println(styleSuccess.Render("  Permission mode set to " + s.cfg.Claude.PermissionMode))
+	mode := strings.TrimSpace(args)
+	valid := false
+	for _, m := range validPermissionModes {
+		if m == mode {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		fmt.Println(styleError.Render(fmt.Sprintf("  Unknown permission mode: %s", mode)))
+		fmt.Println(styleDim.Render(fmt.Sprintf("  Available: %s", strings.Join(validPermissionModes, ", "))))
+		fmt.Println()
+		return false
+	}
+	s.cfg.Claude.PermissionMode = mode
+	fmt.Println(styleSuccess.Render("  Permission mode set to " + mode))
 	fmt.Println()
 	return false
 }
@@ -277,11 +429,26 @@ func cmdMode(s *session, args string, rl *readline.Instance) bool {
 }
 
 func cmdConfig(s *session, args string, rl *readline.Instance) bool {
-	fmt.Printf("  Model:       %s\n", s.cfg.Claude.Model)
-	fmt.Printf("  Effort:      %s\n", s.cfg.Claude.Effort)
-	fmt.Printf("  Sandbox:     %s\n", s.cfg.Sandbox.Level)
-	fmt.Printf("  Pool:        %d workers\n", s.cfg.Pool.MaxConcurrent)
-	fmt.Printf("  Permissions: %s\n", s.cfg.Claude.PermissionMode)
+	fmt.Println()
+	fmt.Println("  " + styleRespTitle.Render("◆ Configuration") + styleRespRule.Render(" ───────────────────────────"))
+	fmt.Println()
+	label := func(name string) string { return styleDim.Render(fmt.Sprintf("  %-14s", name)) }
+
+	fmt.Printf("%s %s %s\n", label("Model"), s.cfg.Claude.Model, styleDim.Render("(effort: "+s.cfg.Claude.Effort+")"))
+	perm := s.cfg.Claude.PermissionMode
+	if perm == "" {
+		perm = "default"
+	}
+	fmt.Printf("%s %s\n", label("Permissions"), perm)
+	fmt.Printf("%s %s\n", label("Sandbox"), s.cfg.Sandbox.Level)
+	fmt.Printf("%s %d workers\n", label("Pool"), s.cfg.Pool.MaxConcurrent)
+	fmt.Printf("%s %d tokens\n", label("Token budget"), s.cfg.Context.TokenBudget)
+	fmt.Printf("%s %ds (long: %ds)\n", label("Timeout"), s.cfg.Claude.Timeout, s.cfg.Claude.LongTaskTimeout)
+	fmt.Printf("%s %d attempts, %.1fx backoff\n", label("Retry"), s.cfg.Retry.MaxAttempts, s.cfg.Retry.Multiplier)
+	fmt.Printf("%s auto:%s · confirm:%s · reject:%s\n", label("Governance"),
+		strings.Join(s.cfg.Governance.AutoApprove, ","),
+		strings.Join(s.cfg.Governance.Confirm, ","),
+		strings.Join(s.cfg.Governance.Reject, ","))
 	fmt.Println()
 	return false
 }
@@ -333,9 +500,22 @@ func cmdMention(s *session, args string, rl *readline.Instance) bool {
 
 func cmdContext(s *session, args string, rl *readline.Instance) bool {
 	ctx := s.context()
-	fmt.Printf("  Turns:       %d\n", len(s.turns))
-	fmt.Printf("  Context:     %d chars\n", len(ctx))
-	fmt.Printf("  Attachments: %d\n", len(s.attachments))
+	fmt.Println()
+	label := func(name string) string { return styleDim.Render(fmt.Sprintf("  %-14s", name)) }
+	fmt.Printf("%s %d\n", label("Turns"), len(s.turns))
+	var ctxStr string
+	if len(ctx) > 1000 {
+		ctxStr = fmt.Sprintf("%.1fk chars", float64(len(ctx))/1000)
+	} else {
+		ctxStr = fmt.Sprintf("%d chars", len(ctx))
+	}
+	fmt.Printf("%s %s\n", label("Context"), ctxStr)
+	fmt.Printf("%s %d\n", label("Attachments"), len(s.attachments))
+	if len(s.attachments) > 0 {
+		for _, p := range s.attachments {
+			fmt.Printf("                %s\n", styleDim.Render(p))
+		}
+	}
 	fmt.Println()
 	return false
 }
@@ -416,7 +596,51 @@ func cmdMetrics(s *session, args string, rl *readline.Instance) bool {
 }
 
 func cmdStatus(s *session, args string, rl *readline.Instance) bool {
-	bridgeCobra(showStatus, nil)
+	fmt.Println()
+	fmt.Println("  " + styleRespTitle.Render("◆ Status") + styleRespRule.Render(" ──────────────────────────────"))
+	fmt.Println()
+
+	// Claude CLI version
+	cliVersion := styleError.Render("not found")
+	if out, err := exec.Command("claude", "--version").Output(); err == nil {
+		cliVersion = strings.TrimSpace(string(out))
+	}
+	label := func(s string) string { return styleDim.Render(fmt.Sprintf("  %-14s", s)) }
+
+	fmt.Printf("%s %s\n", label("Claude CLI"), cliVersion)
+	fmt.Printf("%s %s %s\n", label("Model"), s.cfg.Claude.Model, styleDim.Render("(effort: "+s.cfg.Claude.Effort+")"))
+
+	perm := s.cfg.Claude.PermissionMode
+	if perm == "" {
+		perm = "default"
+	}
+	fmt.Printf("%s %s\n", label("Permissions"), perm)
+	fmt.Printf("%s %s\n", label("Sandbox"), s.cfg.Sandbox.Level)
+	fmt.Printf("%s %d workers\n", label("Pool"), s.cfg.Pool.MaxConcurrent)
+	fmt.Printf("%s auto:%s · confirm:%s · reject:%s\n", label("Risk gate"),
+		strings.Join(s.cfg.Governance.AutoApprove, ","),
+		strings.Join(s.cfg.Governance.Confirm, ","),
+		strings.Join(s.cfg.Governance.Reject, ","))
+
+	ctx := s.context()
+	var ctxStr string
+	if len(ctx) > 1000 {
+		ctxStr = fmt.Sprintf("%.1fk chars", float64(len(ctx))/1000)
+	} else {
+		ctxStr = fmt.Sprintf("%d chars", len(ctx))
+	}
+	fmt.Printf("%s %d turns · %s context\n", label("Session"), len(s.turns), ctxStr)
+
+	report := health.Evaluate(s.cfg.BaseDir)
+	healthStyle := styleSuccess
+	switch report.Level {
+	case health.YELLOW:
+		healthStyle = lipgloss.NewStyle().Foreground(activeTheme.Warning)
+	case health.RED, health.CRITICAL:
+		healthStyle = styleError
+	}
+	fmt.Printf("%s %s\n", label("Health"), healthStyle.Render(report.Level.String()))
+
 	fmt.Println()
 	return false
 }
@@ -428,7 +652,53 @@ func cmdHistory(s *session, args string, rl *readline.Instance) bool {
 }
 
 func cmdDoctor(s *session, args string, rl *readline.Instance) bool {
-	bridgeCobra(runDoctor, nil)
+	fmt.Println()
+	fmt.Println("  " + styleRespTitle.Render("◆ Health Check") + styleRespRule.Render(" ────────────────────────────"))
+	fmt.Println()
+
+	check := func(name string, ok bool, detail string) {
+		if ok {
+			fmt.Printf("  %s %-20s %s\n", styleSuccess.Render("[✓]"), name, styleDim.Render(detail))
+		} else {
+			fmt.Printf("  %s %-20s %s\n", styleError.Render("[✗]"), name, detail)
+		}
+	}
+
+	// Claude CLI
+	cliOK := false
+	cliDetail := "not found in PATH"
+	if out, err := exec.Command("claude", "--version").Output(); err == nil {
+		cliOK = true
+		cliDetail = strings.TrimSpace(string(out))
+	}
+	check("Claude CLI", cliOK, cliDetail)
+
+	// Config file
+	configPath := filepath.Join(s.cfg.BaseDir, "config.yaml")
+	configOK := false
+	configDetail := configPath + " not found"
+	if _, err := os.Stat(configPath); err == nil {
+		configOK = true
+		configDetail = "valid"
+	}
+	check("Config", configOK, configDetail)
+
+	// Run full health evaluation
+	report := health.Evaluate(s.cfg.BaseDir)
+	for _, c := range report.Components {
+		check(c.Name, c.Healthy, c.Detail)
+	}
+
+	// Summary
+	fmt.Println()
+	healthStyle := styleSuccess
+	switch report.Level {
+	case health.YELLOW:
+		healthStyle = lipgloss.NewStyle().Foreground(activeTheme.Warning)
+	case health.RED, health.CRITICAL:
+		healthStyle = styleError
+	}
+	fmt.Printf("  System health: %s\n", healthStyle.Render(report.Level.String()))
 	fmt.Println()
 	return false
 }
@@ -452,7 +722,12 @@ func cmdGC(s *session, args string, rl *readline.Instance) bool {
 }
 
 func cmdVersion(s *session, args string, rl *readline.Instance) bool {
-	fmt.Println("  apex v0.1.0")
+	fmt.Println()
+	fmt.Printf("  %s %s\n", styleBannerTitle.Render("Apex"), "v0.1.0")
+	if out, err := exec.Command("claude", "--version").Output(); err == nil {
+		fmt.Printf("  %s %s\n", styleDim.Render("Claude CLI"), strings.TrimSpace(string(out)))
+	}
+	fmt.Printf("  %s %s/%s\n", styleDim.Render("Platform"), runtime.GOOS, runtime.GOARCH)
 	fmt.Println()
 	return false
 }

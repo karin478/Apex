@@ -10,6 +10,10 @@ apex run "refactor the auth module, then update all tests, and finally update th
 
 Apex will classify risk, decompose into a 3-step DAG, execute in dependency order, audit every action with SHA-256 hash chains, and roll back automatically on failure.
 
+<p align="center">
+  <img src="demo.svg" alt="Apex Interactive Mode Demo" width="700">
+</p>
+
 ---
 
 ## Why Apex
@@ -155,12 +159,12 @@ go install github.com/lyndonlyu/apex/cmd/apex@latest
 mkdir -p ~/.apex
 cat > ~/.apex/config.yaml << 'EOF'
 claude:
-  model: "claude-sonnet-4-20250514"
+  model: "claude-opus-4-6"
   effort: "high"
   timeout: 1800
   permission_mode: "acceptEdits"
 planner:
-  model: "claude-sonnet-4-20250514"
+  model: "claude-opus-4-6"
   timeout: 120
 pool:
   max_concurrent: 4
@@ -201,29 +205,62 @@ apex run --yes "run all tests and generate coverage report"
 ### Interactive Mode
 
 ```bash
-# Enter interactive REPL
 $ apex
 
-apex v0.1.0 · claude-sonnet-4 · ulimit
-Type a task, /help for commands, /quit to exit
+  ◆ Apex v0.1.0
+  claude-opus-4-6 · ulimit · ~/my-project
 
-apex> analyze the error handling in this codebase
-[LOW] Planning... 1 step
-● Analyzing... ✓ (8.2s)
-→ Found 3 patterns...
+  /help for commands · /quit to exit · Tab for autocomplete
 
-apex> now refactor them to use fmt.Errorf
-[MEDIUM] Confirm? (y/n): y
-Planning... 2 steps
-● [1/2] Refactoring... ✓ (12.1s)
-● [2/2] Updating tests... ✓ (6.4s)
-✓ Done (18.5s, 2 steps)
+❯ /model
+  Model: claude-opus-4-6 (effort: high)
 
-apex> /quit
+  ● 1.  opus      Most capable, best for complex tasks
+    2.  sonnet    Balanced speed and capability
+    3.  haiku     Fastest, best for simple tasks
+
+❯ analyze the error handling in this codebase
+
+  ◆ Response ─────────────────────────────
+  Found 3 error handling patterns...
+  ─────
+  ✓ 8.2s · claude-opus-4-6 · LOW
+
+❯ now refactor them to use fmt.Errorf
+  Warning: MEDIUM risk. Proceed? (y/n): y
+  Planning... 2 steps
+
+  ┌ [1/2] Refactoring error handling
+  └ ✓ Done
+
+  ┌ [2/2] Updating tests
+  └ ✓ Done
+
+  ─────
+  ✓ 2/2 steps · 18.5s · claude-opus-4-6 · MEDIUM
+
+❯ /status
+  ◆ Status ──────────────────────────────
+  Claude CLI     2.1.50 (Claude Code)
+  Model          claude-opus-4-6 (effort: high)
+  Permissions    acceptEdits
+  Sandbox        ulimit
+  Pool           4 workers
+  Session        2 turns · 1.2k chars context
+  Health         GREEN
+
+❯ /quit
 Session saved. Goodbye!
 ```
 
-Session context persists across turns — follow-up tasks can reference previous results. Slash commands (`/help`, `/status`, `/doctor`, `/config`, `/clear`) provide system operations without LLM overhead.
+**Features:**
+- Session context persists across turns — follow-up tasks reference previous results
+- 28 slash commands across 7 categories (`/help` to see all)
+- Tab autocomplete for all commands
+- Interactive model switching (`/model opus`, `/model 2`)
+- Real-time system health monitoring (`/status`, `/doctor`)
+- Dark/light theme support (`/theme dark`)
+- Shell escape with `!` prefix (`!git status`)
 
 ---
 
@@ -308,14 +345,14 @@ go test ./internal/dag/ -v
 
 ```yaml
 claude:
-  model: "claude-sonnet-4-20250514"  # Claude model to use
+  model: "claude-opus-4-6"            # Claude model (opus, sonnet, haiku)
   effort: "high"                      # low | medium | high
   timeout: 1800                       # Max seconds per node execution
   binary: "claude"                    # Path to Claude CLI binary
   permission_mode: "acceptEdits"      # default | acceptEdits | bypassPermissions
 
 planner:
-  model: "claude-sonnet-4-20250514"   # Model for task decomposition
+  model: "claude-opus-4-6"            # Model for task decomposition
   timeout: 120                        # Max seconds for planning
 
 pool:
