@@ -15,6 +15,10 @@
   <a href="https://github.com/karin478/Apex"><img src="https://img.shields.io/github/stars/karin478/Apex?style=social" alt="Stars"></a>
 </p>
 
+<p align="center">
+  <a href="https://apex-kappa-nine.vercel.app"><strong>Official Website</strong></a> · <a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#architecture">Architecture</a>
+</p>
+
 Apex is a **CLI-based AI agent orchestrator** that decomposes complex tasks into **directed acyclic graphs (DAGs)**, executes them concurrently through **Claude Code CLI**, and wraps every action in a governance, audit, and safety framework designed for **autonomous AI operation**. Built in Go with 57 internal packages — no external runtime dependencies.
 
 ```
